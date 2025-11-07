@@ -19,10 +19,11 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden; /* Prevent horizontal scroll only */
+  overflow-y: auto; /* Allow vertical scrolling */
 }
 
 #root {
   width: 100vw;
-  height: 100vh;
+  min-height: 100vh; /* Changed from height to min-height */
 }
