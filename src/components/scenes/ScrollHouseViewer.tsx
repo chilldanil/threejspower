@@ -25,56 +25,91 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
   const [currentSection, setCurrentSection] = useState(0);
   const scrollProgressRef = useRef(0);
 
-  // Define cinematic camera paths
+  // Define cinematic camera paths with more dynamic movements
   const cameraKeyframes: CameraKeyframe[] = [
     {
-      position: [30, 20, 30],
-      lookAt: [0, 5, 0],
-      fov: 50,
-      label: 'Welcome',
-      description: 'Discover your dream home'
-    },
-    {
-      position: [25, 8, 0],
+      position: [40, 25, 40],
       lookAt: [0, 8, 0],
-      fov: 45,
-      label: 'Front View',
-      description: 'Modern architectural design'
+      fov: 55,
+      label: 'First Impressions',
+      description: 'Where architecture meets imagination. Every great journey begins with a single view.'
     },
     {
-      position: [0, 15, 25],
-      lookAt: [0, 8, 0],
-      fov: 50,
-      label: 'Side Perspective',
-      description: 'Elegant lines and structure'
-    },
-    {
-      position: [-20, 12, 20],
+      position: [30, 12, 15],
       lookAt: [0, 6, 0],
       fov: 48,
-      label: 'Corner View',
-      description: 'Every angle tells a story'
+      label: 'Approaching',
+      description: 'Drawing closer, the details begin to reveal themselves. Form and function in perfect harmony.'
     },
     {
-      position: [0, 25, 15],
-      lookAt: [0, 0, 0],
-      fov: 55,
-      label: 'Aerial View',
-      description: 'See the complete picture'
-    },
-    {
-      position: [15, 5, -20],
-      lookAt: [0, 5, 0],
+      position: [20, 8, -5],
+      lookAt: [0, 7, 0],
       fov: 42,
-      label: 'Detail Shot',
-      description: 'Crafted with precision'
+      label: 'Main Entrance',
+      description: 'The threshold of possibility. Modern lines frame the entrance, inviting you to explore.'
     },
     {
-      position: [35, 18, 25],
+      position: [-15, 10, 15],
       lookAt: [0, 8, 0],
       fov: 50,
-      label: 'Final Look',
-      description: 'Your journey begins here'
+      label: 'Left Profile',
+      description: 'Sculptural elements catch the light. Each angle reveals new dimensions of design.'
+    },
+    {
+      position: [0, 18, 30],
+      lookAt: [0, 6, 0],
+      fov: 52,
+      label: 'Rear Perspective',
+      description: 'Seamless integration with the environment. Architecture that breathes with its surroundings.'
+    },
+    {
+      position: [25, 6, 0],
+      lookAt: [-5, 8, 0],
+      fov: 38,
+      label: 'Close Detail',
+      description: 'Precision in every edge. Material choices that speak to quality and craftsmanship.'
+    },
+    {
+      position: [15, 14, -25],
+      lookAt: [0, 7, 0],
+      fov: 46,
+      label: 'Right Elevation',
+      description: 'Symmetry balanced with surprise. Windows frame views and bring the outside in.'
+    },
+    {
+      position: [-25, 16, -20],
+      lookAt: [0, 5, 0],
+      fov: 50,
+      label: 'Corner Composition',
+      description: 'Where two facades meet, creating dynamic interplay of light and shadow.'
+    },
+    {
+      position: [0, 35, 20],
+      lookAt: [0, 0, 0],
+      fov: 60,
+      label: 'From Above',
+      description: 'The complete vision revealed. Roof design and spatial relationships in context.'
+    },
+    {
+      position: [8, 4, 18],
+      lookAt: [0, 6, 0],
+      fov: 35,
+      label: 'Human Scale',
+      description: 'At eye level, feeling the proportions. This is where architecture becomes experience.'
+    },
+    {
+      position: [-30, 20, 25],
+      lookAt: [0, 8, 0],
+      fov: 48,
+      label: 'Golden Hour',
+      description: 'As light shifts, surfaces transform. Architecture designed for every moment of the day.'
+    },
+    {
+      position: [35, 28, 0],
+      lookAt: [0, 5, 0],
+      fov: 58,
+      label: 'Final Farewell',
+      description: 'A lasting impression. This is more than a house—it\'s a vision realized.'
     }
   ];
 
@@ -84,19 +119,20 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     const canvas = canvasRef.current;
     const scene = new THREE.Scene();
 
-    // Cinematic gradient background
+    // Cinematic gradient background - deeper, richer tones
     const canvasBg = document.createElement('canvas');
     canvasBg.width = 2;
     canvasBg.height = 512;
     const ctx = canvasBg.getContext('2d')!;
     const gradient = ctx.createLinearGradient(0, 0, 0, 512);
-    gradient.addColorStop(0, '#1a1a2e');
-    gradient.addColorStop(0.5, '#2d3561');
-    gradient.addColorStop(1, '#4a5899');
+    gradient.addColorStop(0, '#0a0a15');
+    gradient.addColorStop(0.3, '#1a1a2e');
+    gradient.addColorStop(0.6, '#2d3561');
+    gradient.addColorStop(1, '#3d4a7a');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 2, 512);
     scene.background = new THREE.CanvasTexture(canvasBg);
-    scene.fog = new THREE.Fog(0x2d3561, 40, 120);
+    scene.fog = new THREE.Fog(0x1a1a2e, 50, 140);
 
     // Camera
     const camera = new THREE.PerspectiveCamera(
@@ -121,48 +157,64 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.3;
 
-    // Cinematic lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    // Enhanced cinematic lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.DirectionalLight(0xfff5e6, 2.0);
+    // Main key light with enhanced shadow quality
+    const mainLight = new THREE.DirectionalLight(0xfff5e6, 2.2);
     mainLight.position.set(30, 50, 20);
     mainLight.castShadow = true;
     mainLight.shadow.mapSize.width = 4096;
     mainLight.shadow.mapSize.height = 4096;
-    mainLight.shadow.camera.left = -40;
-    mainLight.shadow.camera.right = 40;
-    mainLight.shadow.camera.top = 40;
-    mainLight.shadow.camera.bottom = -40;
+    mainLight.shadow.camera.left = -50;
+    mainLight.shadow.camera.right = 50;
+    mainLight.shadow.camera.top = 50;
+    mainLight.shadow.camera.bottom = -50;
     mainLight.shadow.bias = -0.0001;
+    mainLight.shadow.normalBias = 0.02;
     scene.add(mainLight);
 
-    const fillLight = new THREE.DirectionalLight(0x8fb4ff, 0.6);
+    // Cool fill light
+    const fillLight = new THREE.DirectionalLight(0x8fb4ff, 0.8);
     fillLight.position.set(-20, 30, -20);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    // Rim light for edge definition
+    const rimLight = new THREE.DirectionalLight(0xadd8e6, 1.0);
     rimLight.position.set(-30, 10, 30);
     scene.add(rimLight);
 
-    const hemiLight = new THREE.HemisphereLight(0x8fb4ff, 0x444444, 0.5);
+    // Hemisphere light for natural ambiance
+    const hemiLight = new THREE.HemisphereLight(0x8fb4ff, 0x2a2a3e, 0.6);
     scene.add(hemiLight);
 
-    // Ground
-    const groundGeometry = new THREE.CircleGeometry(80, 64);
+    // Add subtle accent lights
+    const accentLight1 = new THREE.PointLight(0x4a9eff, 0.8, 50);
+    accentLight1.position.set(15, 10, 15);
+    scene.add(accentLight1);
+
+    const accentLight2 = new THREE.PointLight(0xff6b9d, 0.6, 40);
+    accentLight2.position.set(-15, 8, -15);
+    scene.add(accentLight2);
+
+    // Enhanced ground with gradient material
+    const groundGeometry = new THREE.CircleGeometry(100, 64);
     const groundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2a2a3e,
-      roughness: 0.8,
-      metalness: 0.2
+      color: 0x1a1a2e,
+      roughness: 0.9,
+      metalness: 0.1,
+      emissive: 0x0a0a15,
+      emissiveIntensity: 0.2
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Subtle grid
-    const gridHelper = new THREE.GridHelper(80, 40, 0x444466, 0x2a2a3e);
-    gridHelper.material.opacity = 0.3;
+    // Refined grid with subtle glow
+    const gridHelper = new THREE.GridHelper(100, 50, 0x4a9eff, 0x2a2a3e);
+    gridHelper.material.opacity = 0.15;
     gridHelper.material.transparent = true;
     scene.add(gridHelper);
 
@@ -174,7 +226,6 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
 
     let houseModel: THREE.Group;
     let modelCenter = new THREE.Vector3();
-    let modelSize = new THREE.Vector3();
 
     gltfLoader.load(
       modelPath,
@@ -183,7 +234,6 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
 
         const box = new THREE.Box3().setFromObject(houseModel);
         modelCenter = box.getCenter(new THREE.Vector3());
-        modelSize = box.getSize(new THREE.Vector3());
 
         houseModel.position.x = -modelCenter.x;
         houseModel.position.z = -modelCenter.z;
@@ -254,9 +304,18 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
       camera.fov = THREE.MathUtils.lerp(currentFov, nextFov, easedProgress);
       camera.updateProjectionMatrix();
 
-      // Subtle model rotation for dynamism
+      // Dynamic model rotation based on scroll
       if (houseModel) {
-        houseModel.rotation.y = progress * Math.PI * 0.3;
+        // Smoother rotation with acceleration/deceleration
+        houseModel.rotation.y = progress * Math.PI * 0.5 + Math.sin(progress * Math.PI) * 0.1;
+      }
+
+      // Dynamic lighting adjustment based on scroll position
+      if (mainLight) {
+        const lightAngle = progress * Math.PI * 2;
+        mainLight.position.x = Math.cos(lightAngle) * 40;
+        mainLight.position.z = Math.sin(lightAngle) * 40;
+        mainLight.position.y = 50 + Math.sin(progress * Math.PI) * 10;
       }
     };
 
@@ -268,10 +327,27 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     const animate = () => {
       animationId = requestAnimationFrame(animate);
 
-      // Subtle breathing animation
+      // Very subtle breathing animation
       if (houseModel) {
+        const time = Date.now() * 0.0003;
+        houseModel.position.y = Math.sin(time) * 0.05;
+      }
+
+      // Subtle camera shake for cinematic feel
+      if (camera) {
+        const time = Date.now() * 0.0001;
+        camera.position.x += Math.sin(time * 2) * 0.01;
+        camera.position.y += Math.cos(time * 3) * 0.008;
+      }
+
+      // Animate accent lights
+      if (accentLight1) {
         const time = Date.now() * 0.0005;
-        houseModel.position.y = -modelSize.y * 0.5 + Math.sin(time) * 0.1;
+        accentLight1.intensity = 0.8 + Math.sin(time) * 0.2;
+      }
+      if (accentLight2) {
+        const time = Date.now() * 0.0004;
+        accentLight2.intensity = 0.6 + Math.cos(time) * 0.15;
       }
 
       renderer.render(scene, camera);
@@ -345,61 +421,92 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
         </div>
       )}
 
-      {/* Scrollable content sections */}
+      {/* Scrollable content sections with parallax */}
       {isLoaded && (
         <>
-          {cameraKeyframes.map((keyframe, index) => (
-            <section
-              key={index}
-              style={{
-                position: 'relative',
-                height: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: index % 2 === 0 ? 'flex-start' : 'flex-end',
-                padding: '0 10%',
-                zIndex: 10,
-                pointerEvents: 'none'
-              }}
-            >
-              <div style={{
-                maxWidth: '500px',
-                color: '#fff',
-                opacity: currentSection === index ? 1 : 0.3,
-                transform: currentSection === index ? 'translateY(0)' : 'translateY(20px)',
-                transition: 'all 0.6s ease',
-                pointerEvents: 'auto'
-              }}>
+          {cameraKeyframes.map((keyframe, index) => {
+            const parallaxOffset = (scrollProgressRef.current - index / cameraKeyframes.length) * 50;
+            const isActive = currentSection === index;
+
+            return (
+              <section
+                key={index}
+                style={{
+                  position: 'relative',
+                  height: '100vh',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: index % 2 === 0 ? 'flex-start' : 'flex-end',
+                  padding: '0 8%',
+                  zIndex: 10,
+                  pointerEvents: 'none'
+                }}
+              >
                 <div style={{
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '3px',
-                  color: '#4a9eff',
-                  marginBottom: '12px'
+                  maxWidth: '600px',
+                  color: '#fff',
+                  opacity: isActive ? 1 : 0.2,
+                  transform: `translateY(${isActive ? 0 : 30}px) translateX(${parallaxOffset}px) scale(${isActive ? 1 : 0.95})`,
+                  transition: 'all 0.8s cubic-bezier(0.4, 0.0, 0.2, 1)',
+                  pointerEvents: 'auto',
+                  background: 'linear-gradient(135deg, rgba(26, 26, 46, 0.85) 0%, rgba(45, 53, 97, 0.75) 100%)',
+                  backdropFilter: 'blur(20px)',
+                  padding: '40px',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(74, 158, 255, 0.2)',
+                  boxShadow: isActive ? '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(74, 158, 255, 0.1)' : '0 10px 30px rgba(0, 0, 0, 0.3)'
                 }}>
-                  {String(index + 1).padStart(2, '0')} / {String(cameraKeyframes.length).padStart(2, '0')}
+                  <div style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '4px',
+                    color: '#4a9eff',
+                    marginBottom: '16px',
+                    opacity: isActive ? 1 : 0.5,
+                    transition: 'opacity 0.6s ease'
+                  }}>
+                    Chapter {String(index + 1).padStart(2, '0')}
+                    <span style={{
+                      margin: '0 12px',
+                      opacity: 0.3
+                    }}>•</span>
+                    {String(cameraKeyframes.length).padStart(2, '0')} Views
+                  </div>
+                  <h2 style={{
+                    fontSize: '56px',
+                    fontWeight: 800,
+                    marginBottom: '20px',
+                    lineHeight: 1.1,
+                    textShadow: '0 4px 30px rgba(0,0,0,0.7)',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #4a9eff 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}>
+                    {keyframe.label}
+                  </h2>
+                  <p style={{
+                    fontSize: '18px',
+                    lineHeight: 1.8,
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    fontWeight: 300,
+                    marginBottom: '24px'
+                  }}>
+                    {keyframe.description}
+                  </p>
+                  <div style={{
+                    height: '3px',
+                    width: isActive ? '100%' : '0%',
+                    background: 'linear-gradient(90deg, #4a9eff, #7b68ee)',
+                    transition: 'width 0.8s ease',
+                    borderRadius: '2px',
+                    opacity: isActive ? 1 : 0
+                  }} />
                 </div>
-                <h2 style={{
-                  fontSize: '48px',
-                  fontWeight: 700,
-                  marginBottom: '16px',
-                  lineHeight: 1.2,
-                  textShadow: '0 2px 20px rgba(0,0,0,0.5)'
-                }}>
-                  {keyframe.label}
-                </h2>
-                <p style={{
-                  fontSize: '20px',
-                  lineHeight: 1.6,
-                  color: '#ccc',
-                  fontWeight: 300
-                }}>
-                  {keyframe.description}
-                </p>
-              </div>
-            </section>
-          ))}
+              </section>
+            );
+          })}
 
           {/* Scroll indicator */}
           <div style={{
@@ -409,18 +516,29 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
             transform: 'translateX(-50%)',
             zIndex: 100,
             color: '#fff',
-            fontSize: '14px',
+            fontSize: '13px',
             textAlign: 'center',
-            opacity: scrollProgressRef.current < 0.1 ? 1 : 0,
-            transition: 'opacity 0.5s'
+            opacity: scrollProgressRef.current < 0.08 ? 1 : 0,
+            transition: 'opacity 0.5s',
+            pointerEvents: 'none'
           }}>
-            <div style={{ marginBottom: '10px', fontWeight: 300 }}>Scroll to explore</div>
+            <div style={{
+              marginBottom: '12px',
+              fontWeight: 400,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              fontSize: '11px',
+              color: 'rgba(255, 255, 255, 0.7)'
+            }}>
+              Begin Your Journey
+            </div>
             <div style={{
               width: '2px',
-              height: '40px',
-              background: 'linear-gradient(180deg, transparent, #4a9eff)',
+              height: '50px',
+              background: 'linear-gradient(180deg, transparent, #4a9eff, transparent)',
               margin: '0 auto',
-              animation: 'scroll-bounce 2s infinite'
+              animation: 'scroll-bounce 2.5s ease-in-out infinite',
+              boxShadow: '0 0 20px rgba(74, 158, 255, 0.5)'
             }} />
           </div>
 
@@ -430,16 +548,46 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
             top: 0,
             left: 0,
             width: '100%',
-            height: '3px',
-            background: 'rgba(255,255,255,0.1)',
-            zIndex: 1000
+            height: '4px',
+            background: 'rgba(0, 0, 0, 0.3)',
+            zIndex: 1000,
+            backdropFilter: 'blur(10px)'
           }}>
             <div style={{
               height: '100%',
-              background: 'linear-gradient(90deg, #4a9eff, #7b68ee)',
+              background: 'linear-gradient(90deg, #4a9eff 0%, #7b68ee 50%, #ff6b9d 100%)',
               width: `${scrollProgressRef.current * 100}%`,
-              transition: 'width 0.1s'
+              transition: 'width 0.1s ease-out',
+              boxShadow: '0 0 20px rgba(74, 158, 255, 0.6)'
             }} />
+          </div>
+
+          {/* Section indicators */}
+          <div style={{
+            position: 'fixed',
+            right: '30px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 1000,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
+            {cameraKeyframes.map((_, index) => (
+              <div
+                key={index}
+                style={{
+                  width: currentSection === index ? '40px' : '8px',
+                  height: '3px',
+                  background: currentSection === index
+                    ? 'linear-gradient(90deg, #4a9eff, #7b68ee)'
+                    : 'rgba(255, 255, 255, 0.3)',
+                  borderRadius: '2px',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1)',
+                  boxShadow: currentSection === index ? '0 0 10px rgba(74, 158, 255, 0.5)' : 'none'
+                }}
+              />
+            ))}
           </div>
         </>
       )}
