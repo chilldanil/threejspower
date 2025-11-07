@@ -4,6 +4,8 @@ export type RenderEngine = 'threejs' | 'babylonjs';
 
 export type CameraMode = 'orbit' | 'free-fly' | 'first-person';
 
+export type ViewMode = 'demo' | 'house';
+
 export interface SceneConfig {
   engine: RenderEngine;
   enableShadows: boolean;

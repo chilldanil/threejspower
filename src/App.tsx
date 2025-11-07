@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { ThreeJsScene } from './components/scenes/ThreeJsScene';
 import { BabylonJsScene } from './components/scenes/BabylonJsScene';
+import { HouseViewer } from './components/scenes/HouseViewer';
 import { ControlPanel } from './components/ui/ControlPanel';
 import type {
   SceneConfig,
   LayerVisibility,
   MaterialSettings,
-  PerformanceStats
+  PerformanceStats,
+  ViewMode
 } from './types';
 import './App.css';
 
 function App() {
+  const [viewMode, setViewMode] = useState<ViewMode>('demo');
   const [config, setConfig] = useState<SceneConfig>({
     engine: 'threejs',
     enableShadows: true,
@@ -66,19 +69,50 @@ function App() {
         <div className="header-content">
           <h1>Interactive 3D Web Platform</h1>
           <p className="subtitle">
-            Advanced Rendering, GIS, and Point Cloud Integration
+            {viewMode === 'house'
+              ? 'Architectural Visualization - House Flythrough'
+              : 'Advanced Rendering, GIS, and Point Cloud Integration'
+            }
           </p>
         </div>
-        <div className="engine-badge">
-          <span className="badge-label">Active Engine:</span>
-          <span className={`badge ${config.engine === 'threejs' ? 'threejs' : 'babylonjs'}`}>
-            {config.engine === 'threejs' ? 'Three.js' : 'Babylon.js'}
-          </span>
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+          {/* View Mode Selector */}
+          <div className="view-selector">
+            <button
+              className={viewMode === 'demo' ? 'active' : ''}
+              onClick={() => setViewMode('demo')}
+            >
+              🏙️ Demo Scene
+            </button>
+            <button
+              className={viewMode === 'house' ? 'active' : ''}
+              onClick={() => setViewMode('house')}
+            >
+              🏠 Your House
+            </button>
+          </div>
+
+          {/* Engine badge - only show in demo mode */}
+          {viewMode === 'demo' && (
+            <div className="engine-badge">
+              <span className="badge-label">Engine:</span>
+              <span className={`badge ${config.engine === 'threejs' ? 'threejs' : 'babylonjs'}`}>
+                {config.engine === 'threejs' ? 'Three.js' : 'Babylon.js'}
+              </span>
+            </div>
+          )}
         </div>
       </header>
 
       <div className="scene-container">
-        {config.engine === 'threejs' ? (
+        {viewMode === 'house' ? (
+          <HouseViewer
+            key="house-viewer"
+            enableShadows={true}
+            enableSSAO={true}
+            enableBloom={false}
+          />
+        ) : config.engine === 'threejs' ? (
           <ThreeJsScene
             key="threejs"
             config={config}
@@ -97,25 +131,30 @@ function App() {
         )}
       </div>
 
-      <ControlPanel
-        config={config}
-        layers={layers}
-        materials={materials}
-        stats={stats}
-        onConfigChange={handleConfigChange}
-        onLayerChange={handleLayerChange}
-        onMaterialChange={handleMaterialChange}
-      />
+      {/* Only show control panel in demo mode */}
+      {viewMode === 'demo' && (
+        <>
+          <ControlPanel
+            config={config}
+            layers={layers}
+            materials={materials}
+            stats={stats}
+            onConfigChange={handleConfigChange}
+            onLayerChange={handleLayerChange}
+            onMaterialChange={handleMaterialChange}
+          />
 
-      <div className="info-panel">
-        <h4>Navigation Controls</h4>
-        <ul>
-          <li><strong>Left Mouse:</strong> Rotate camera</li>
-          <li><strong>Right Mouse:</strong> Pan camera</li>
-          <li><strong>Scroll Wheel:</strong> Zoom in/out</li>
-          <li><strong>Touch:</strong> Pinch to zoom, drag to rotate</li>
-        </ul>
-      </div>
+          <div className="info-panel">
+            <h4>Navigation Controls</h4>
+            <ul>
+              <li><strong>Left Mouse:</strong> Rotate camera</li>
+              <li><strong>Right Mouse:</strong> Pan camera</li>
+              <li><strong>Scroll Wheel:</strong> Zoom in/out</li>
+              <li><strong>Touch:</strong> Pinch to zoom, drag to rotate</li>
+            </ul>
+          </div>
+        </>
+      )}
 
       <footer className="app-footer">
         <div className="footer-content">
