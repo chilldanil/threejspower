@@ -60,58 +60,63 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     // Day: altitude > 0°
 
     if (altitudeDeg < -18) {
-      // Night
+      // Deep night - very dark
       return {
-        top: '#0a0a15',
-        middle: '#1a1a2e',
-        bottom: '#0f0f1e',
-        sunColor: '#ffffff',
-        ambientIntensity: 0.15,
-        sunIntensity: 0
+        top: '#000005',
+        middle: '#000510',
+        bottom: '#050510',
+        sunColor: '#8888ff',
+        ambientIntensity: 0.05,
+        sunIntensity: 0,
+        exposure: 0.4
       };
     } else if (altitudeDeg < -6) {
-      // Twilight
+      // Twilight - stars fading
       const t = (altitudeDeg + 18) / 12;
       return {
-        top: lerpColor('#0a0a15', '#2d3561', t),
-        middle: lerpColor('#1a1a2e', '#5a4a7a', t),
-        bottom: lerpColor('#0f0f1e', '#ff6b4a', t),
-        sunColor: '#ff8855',
-        ambientIntensity: 0.2 + t * 0.2,
-        sunIntensity: t * 0.5
+        top: lerpColor('#000005', '#1a1a3e', t),
+        middle: lerpColor('#000510', '#2d2561', t),
+        bottom: lerpColor('#050510', '#5a3a2a', t),
+        sunColor: '#ff6633',
+        ambientIntensity: 0.05 + t * 0.15,
+        sunIntensity: t * 0.3,
+        exposure: 0.4 + t * 0.3
       };
     } else if (altitudeDeg < 0) {
-      // Dawn/Dusk
+      // Dawn/Dusk - golden hour begins
       const t = (altitudeDeg + 6) / 6;
       return {
-        top: lerpColor('#2d3561', '#4a7ba7', t),
-        middle: lerpColor('#5a4a7a', '#87CEEB', t),
-        bottom: lerpColor('#ff6b4a', '#ffb366', t),
-        sunColor: '#ffaa66',
-        ambientIntensity: 0.4 + t * 0.2,
-        sunIntensity: 0.5 + t * 0.8
+        top: lerpColor('#1a1a3e', '#ff6b4a', t),
+        middle: lerpColor('#2d2561', '#ff8855', t),
+        bottom: lerpColor('#5a3a2a', '#ffaa66', t),
+        sunColor: '#ffaa44',
+        ambientIntensity: 0.2 + t * 0.3,
+        sunIntensity: 0.3 + t * 1.0,
+        exposure: 0.7 + t * 0.3
       };
     } else if (altitudeDeg < 15) {
-      // Early morning/late evening
+      // Early morning/late evening - warm light
       const t = altitudeDeg / 15;
       return {
-        top: lerpColor('#4a7ba7', '#87CEEB', t),
-        middle: lerpColor('#87CEEB', '#B0E0E6', t),
-        bottom: lerpColor('#ffb366', '#ffd89b', t),
-        sunColor: '#fff5e6',
-        ambientIntensity: 0.6 + t * 0.2,
-        sunIntensity: 1.3 + t * 0.5
+        top: lerpColor('#ff6b4a', '#87CEEB', t),
+        middle: lerpColor('#ff8855', '#a0d0f0', t),
+        bottom: lerpColor('#ffaa66', '#ffd89b', t),
+        sunColor: '#ffeedd',
+        ambientIntensity: 0.5 + t * 0.3,
+        sunIntensity: 1.3 + t * 0.7,
+        exposure: 1.0 + t * 0.3
       };
     } else {
-      // Full daylight
+      // Full daylight - bright and clear
       const t = Math.min((altitudeDeg - 15) / 45, 1);
       return {
-        top: lerpColor('#87CEEB', '#5da9e9', t),
-        middle: lerpColor('#B0E0E6', '#87CEEB', t),
-        bottom: lerpColor('#ffd89b', '#e3f4ff', t),
-        sunColor: '#fff5e6',
-        ambientIntensity: 0.8,
-        sunIntensity: 1.8 + t * 0.4
+        top: lerpColor('#87CEEB', '#4a90e2', t),
+        middle: lerpColor('#a0d0f0', '#87CEEB', t),
+        bottom: lerpColor('#ffd89b', '#b0e0ff', t),
+        sunColor: '#fffaf0',
+        ambientIntensity: 0.8 + t * 0.2,
+        sunIntensity: 2.0 + t * 0.5,
+        exposure: 1.3 + t * 0.2
       };
     }
   };
@@ -254,6 +259,94 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     const skyColors = getSkyColors(sunPos.altitude);
     updateSkyBackground(skyColors);
 
+    // Create visible sun sphere
+    const sunGeometry = new THREE.SphereGeometry(8, 32, 32);
+    const sunMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(skyColors.sunColor),
+      fog: false
+    });
+    const sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
+    sunSphere.position.set(sunPos.x * 0.9, sunPos.y * 0.9, sunPos.z * 0.9);
+
+    // Add sun glow
+    const sunGlowGeometry = new THREE.SphereGeometry(12, 32, 32);
+    const sunGlowMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(skyColors.sunColor),
+      transparent: true,
+      opacity: 0.3,
+      fog: false
+    });
+    const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
+    sunGlow.position.copy(sunSphere.position);
+
+    // Only show sun when above horizon
+    sunSphere.visible = sunPos.altitude > -0.1;
+    sunGlow.visible = sunPos.altitude > -0.1;
+    scene.add(sunSphere);
+    scene.add(sunGlow);
+
+    // Create moon
+    const moonGeometry = new THREE.SphereGeometry(6, 32, 32);
+    const moonMaterial = new THREE.MeshBasicMaterial({
+      color: 0xe8e8ff,
+      fog: false
+    });
+    const moonSphere = new THREE.Mesh(moonGeometry, moonMaterial);
+
+    // Position moon opposite to sun
+    const moonPos = {
+      x: -sunPos.x * 0.9,
+      y: Math.abs(sunPos.y * 0.9),
+      z: -sunPos.z * 0.9
+    };
+    moonSphere.position.set(moonPos.x, moonPos.y, moonPos.z);
+
+    // Moon glow
+    const moonGlowGeometry = new THREE.SphereGeometry(8, 32, 32);
+    const moonGlowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xaaaaff,
+      transparent: true,
+      opacity: 0.2,
+      fog: false
+    });
+    const moonGlow = new THREE.Mesh(moonGlowGeometry, moonGlowMaterial);
+    moonGlow.position.copy(moonSphere.position);
+
+    // Only show moon at night
+    moonSphere.visible = sunPos.altitude < -0.1;
+    moonGlow.visible = sunPos.altitude < -0.1;
+    scene.add(moonSphere);
+    scene.add(moonGlow);
+
+    // Create starfield
+    const starsGeometry = new THREE.BufferGeometry();
+    const starPositions = [];
+    const starCount = 2000;
+
+    for (let i = 0; i < starCount; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos((Math.random() * 2) - 1);
+      const radius = 200 + Math.random() * 100;
+
+      starPositions.push(
+        radius * Math.sin(phi) * Math.cos(theta),
+        radius * Math.sin(phi) * Math.sin(theta),
+        radius * Math.cos(phi)
+      );
+    }
+
+    starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+    const starsMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.5,
+      transparent: true,
+      opacity: sunPos.altitude < -0.1 ? 1 : 0,
+      fog: false,
+      sizeAttenuation: true
+    });
+    const stars = new THREE.Points(starsGeometry, starsMaterial);
+    scene.add(stars);
+
     // Camera
     const camera = new THREE.PerspectiveCamera(
       50,
@@ -275,7 +368,7 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.3;
+    renderer.toneMappingExposure = skyColors.exposure;
 
     // Dynamic lighting based on real sun position
     const ambientLight = new THREE.AmbientLight(0xffffff, skyColors.ambientIntensity);
@@ -310,6 +403,19 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
       0.4
     );
     scene.add(hemiLight);
+
+    // Moonlight (only active at night)
+    const moonLight = new THREE.DirectionalLight(0x8888ff, 0.3);
+    moonLight.position.set(moonPos.x, moonPos.y, moonPos.z);
+    moonLight.castShadow = true;
+    moonLight.shadow.mapSize.width = 2048;
+    moonLight.shadow.mapSize.height = 2048;
+    moonLight.shadow.camera.left = -50;
+    moonLight.shadow.camera.right = 50;
+    moonLight.shadow.camera.top = 50;
+    moonLight.shadow.camera.bottom = -50;
+    moonLight.visible = sunPos.altitude < -0.1;
+    scene.add(moonLight);
 
     // Enhanced ground with gradient material
     const groundGeometry = new THREE.CircleGeometry(100, 64);
@@ -481,11 +587,40 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
 
         const newSunPos = getSunPosition(newTime);
         const newSkyColors = getSkyColors(newSunPos.altitude);
+        const isNight = newSunPos.altitude < -0.1;
+        const isDay = newSunPos.altitude > -0.1;
 
-        // Update sun light position
+        // Update sun position and visibility
+        sunSphere.position.set(newSunPos.x * 0.9, newSunPos.y * 0.9, newSunPos.z * 0.9);
+        sunGlow.position.copy(sunSphere.position);
+        sunSphere.visible = isDay;
+        sunGlow.visible = isDay;
+        sunMaterial.color = new THREE.Color(newSkyColors.sunColor);
+        sunGlowMaterial.color = new THREE.Color(newSkyColors.sunColor);
+
+        // Update moon position and visibility
+        const newMoonPos = {
+          x: -newSunPos.x * 0.9,
+          y: Math.abs(newSunPos.y * 0.9) + 10,
+          z: -newSunPos.z * 0.9
+        };
+        moonSphere.position.set(newMoonPos.x, newMoonPos.y, newMoonPos.z);
+        moonGlow.position.copy(moonSphere.position);
+        moonSphere.visible = isNight;
+        moonGlow.visible = isNight;
+
+        // Update stars opacity
+        starsMaterial.opacity = isNight ? Math.min(1, (Math.abs(newSunPos.altitude) - 0.1) / 0.5) : 0;
+
+        // Update sun light
         sunLight.position.set(newSunPos.x, newSunPos.y, newSunPos.z);
         sunLight.color = new THREE.Color(newSkyColors.sunColor);
         sunLight.intensity = newSkyColors.sunIntensity;
+        sunLight.visible = isDay;
+
+        // Update moonlight
+        moonLight.position.set(newMoonPos.x, newMoonPos.y, newMoonPos.z);
+        moonLight.visible = isNight;
 
         // Update ambient light
         ambientLight.intensity = newSkyColors.ambientIntensity;
@@ -493,6 +628,9 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
         // Update hemisphere light colors
         hemiLight.color = new THREE.Color(newSkyColors.middle);
         hemiLight.groundColor = new THREE.Color(newSkyColors.bottom);
+
+        // Update tone mapping exposure
+        renderer.toneMappingExposure = newSkyColors.exposure;
 
         // Update sky background
         updateSkyBackground(newSkyColors);
@@ -506,11 +644,19 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
         houseModel.position.y = Math.sin(time) * 0.05;
       }
 
-      // Animate clouds - slow drift
+      // Animate clouds - slow drift, fade at night
+      const currentSunPos = getSunPosition(currentTime);
+      const cloudOpacityMultiplier = currentSunPos.altitude > 0 ? 1 : Math.max(0.2, currentSunPos.altitude / -0.3);
+
       clouds.forEach((cloud, i) => {
         cloud.position.x += Math.sin(time * 0.1 + i) * 0.01;
         cloud.position.z += Math.cos(time * 0.1 + i) * 0.01;
         cloud.rotation.z += 0.0001;
+
+        // Adjust cloud opacity based on time of day
+        const baseMaterial = cloud.material as THREE.MeshBasicMaterial;
+        const baseOpacity = 0.15 + (i % 3) * 0.05;
+        baseMaterial.opacity = baseOpacity * cloudOpacityMultiplier;
 
         // Keep clouds in visible range
         const distance = Math.sqrt(cloud.position.x ** 2 + cloud.position.z ** 2);
@@ -520,6 +666,12 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
           cloud.position.z = Math.sin(angle) * 70;
         }
       });
+
+      // Twinkle stars
+      if (starsMaterial.opacity > 0) {
+        const twinkle = (Math.sin(time * 5) + 1) * 0.05;
+        starsMaterial.size = 0.5 + twinkle;
+      }
 
       // Subtle camera shake for cinematic feel
       if (camera) {
