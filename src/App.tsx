@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ThreeJsScene } from './components/scenes/ThreeJsScene';
 import { BabylonJsScene } from './components/scenes/BabylonJsScene';
 import { HouseViewer } from './components/scenes/HouseViewer';
+import { ScrollHouseViewer } from './components/scenes/ScrollHouseViewer';
 import { ControlPanel } from './components/ui/ControlPanel';
 import type {
   SceneConfig,
@@ -13,7 +14,7 @@ import type {
 import './App.css';
 
 function App() {
-  const [viewMode, setViewMode] = useState<ViewMode>('demo');
+  const [viewMode, setViewMode] = useState<ViewMode>('landing');
   const [config, setConfig] = useState<SceneConfig>({
     engine: 'threejs',
     enableShadows: true,
@@ -63,6 +64,65 @@ function App() {
     setStats(newStats);
   };
 
+  // Render landing page with exit button
+  if (viewMode === 'landing') {
+    return (
+      <div style={{ position: 'relative' }}>
+        <ScrollHouseViewer />
+        {/* Floating navigation button */}
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 2000,
+          display: 'flex',
+          gap: '10px'
+        }}>
+          <button
+            onClick={() => setViewMode('demo')}
+            style={{
+              padding: '12px 24px',
+              background: 'rgba(74, 158, 255, 0.9)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 600,
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+              transition: 'all 0.3s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(74, 158, 255, 1)'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(74, 158, 255, 0.9)'}
+          >
+            🏙️ Explore Demo
+          </button>
+          <button
+            onClick={() => setViewMode('house')}
+            style={{
+              padding: '12px 24px',
+              background: 'rgba(139, 195, 74, 0.9)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 600,
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+              transition: 'all 0.3s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(139, 195, 74, 1)'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(139, 195, 74, 0.9)'}
+          >
+            🏠 House Viewer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -79,6 +139,11 @@ function App() {
           {/* View Mode Selector */}
           <div className="view-selector">
             <button
+              onClick={() => setViewMode('landing')}
+            >
+              ✨ Landing Page
+            </button>
+            <button
               className={viewMode === 'demo' ? 'active' : ''}
               onClick={() => setViewMode('demo')}
             >
@@ -88,7 +153,7 @@ function App() {
               className={viewMode === 'house' ? 'active' : ''}
               onClick={() => setViewMode('house')}
             >
-              🏠 Your House
+              🏠 House Viewer
             </button>
           </div>
 

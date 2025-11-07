@@ -4,7 +4,7 @@ export type RenderEngine = 'threejs' | 'babylonjs';
 
 export type CameraMode = 'orbit' | 'free-fly' | 'first-person';
 
-export type ViewMode = 'demo' | 'house';
+export type ViewMode = 'demo' | 'house' | 'landing';
 
 export interface SceneConfig {
   engine: RenderEngine;
