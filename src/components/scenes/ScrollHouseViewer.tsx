@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import * as SunCalc from 'suncalc';
 
 interface CameraKeyframe {
   position: [number, number, number];
@@ -11,19 +12,129 @@ interface CameraKeyframe {
   description: string;
 }
 
+interface WeatherCondition {
+  type: 'clear' | 'cloudy' | 'rainy' | 'foggy';
+  intensity: number;
+}
+
 interface ScrollHouseViewerProps {
   modelPath?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
-  modelPath = '/models/haus.glb'
+  modelPath = '/models/haus.glb',
+  latitude = 48.1502953252508,
+  longitude = 11.567239067279655
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentSection, setCurrentSection] = useState(0);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [weather] = useState<WeatherCondition>({ type: 'clear', intensity: 0.7 });
   const scrollProgressRef = useRef(0);
+
+  // Calculate sun position based on real time and location
+  const getSunPosition = (date: Date) => {
+    const sunPos = SunCalc.getPosition(date, latitude, longitude);
+    const sunDistance = 100;
+
+    return {
+      altitude: sunPos.altitude, // angle above horizon
+      azimuth: sunPos.azimuth,   // angle from north
+      x: sunDistance * Math.cos(sunPos.altitude) * Math.sin(sunPos.azimuth),
+      y: sunDistance * Math.sin(sunPos.altitude),
+      z: sunDistance * Math.cos(sunPos.altitude) * Math.cos(sunPos.azimuth)
+    };
+  };
+
+  // Get sky colors based on sun altitude
+  const getSkyColors = (altitude: number) => {
+    const altitudeDeg = altitude * (180 / Math.PI);
+
+    // Night: altitude < -18°
+    // Twilight: -18° < altitude < 0°
+    // Day: altitude > 0°
+
+    if (altitudeDeg < -18) {
+      // Night
+      return {
+        top: '#0a0a15',
+        middle: '#1a1a2e',
+        bottom: '#0f0f1e',
+        sunColor: '#ffffff',
+        ambientIntensity: 0.15,
+        sunIntensity: 0
+      };
+    } else if (altitudeDeg < -6) {
+      // Twilight
+      const t = (altitudeDeg + 18) / 12;
+      return {
+        top: lerpColor('#0a0a15', '#2d3561', t),
+        middle: lerpColor('#1a1a2e', '#5a4a7a', t),
+        bottom: lerpColor('#0f0f1e', '#ff6b4a', t),
+        sunColor: '#ff8855',
+        ambientIntensity: 0.2 + t * 0.2,
+        sunIntensity: t * 0.5
+      };
+    } else if (altitudeDeg < 0) {
+      // Dawn/Dusk
+      const t = (altitudeDeg + 6) / 6;
+      return {
+        top: lerpColor('#2d3561', '#4a7ba7', t),
+        middle: lerpColor('#5a4a7a', '#87CEEB', t),
+        bottom: lerpColor('#ff6b4a', '#ffb366', t),
+        sunColor: '#ffaa66',
+        ambientIntensity: 0.4 + t * 0.2,
+        sunIntensity: 0.5 + t * 0.8
+      };
+    } else if (altitudeDeg < 15) {
+      // Early morning/late evening
+      const t = altitudeDeg / 15;
+      return {
+        top: lerpColor('#4a7ba7', '#87CEEB', t),
+        middle: lerpColor('#87CEEB', '#B0E0E6', t),
+        bottom: lerpColor('#ffb366', '#ffd89b', t),
+        sunColor: '#fff5e6',
+        ambientIntensity: 0.6 + t * 0.2,
+        sunIntensity: 1.3 + t * 0.5
+      };
+    } else {
+      // Full daylight
+      const t = Math.min((altitudeDeg - 15) / 45, 1);
+      return {
+        top: lerpColor('#87CEEB', '#5da9e9', t),
+        middle: lerpColor('#B0E0E6', '#87CEEB', t),
+        bottom: lerpColor('#ffd89b', '#e3f4ff', t),
+        sunColor: '#fff5e6',
+        ambientIntensity: 0.8,
+        sunIntensity: 1.8 + t * 0.4
+      };
+    }
+  };
+
+  // Helper function to interpolate between colors
+  const lerpColor = (color1: string, color2: string, t: number): string => {
+    const c1 = parseInt(color1.slice(1), 16);
+    const c2 = parseInt(color2.slice(1), 16);
+
+    const r1 = (c1 >> 16) & 255;
+    const g1 = (c1 >> 8) & 255;
+    const b1 = c1 & 255;
+
+    const r2 = (c2 >> 16) & 255;
+    const g2 = (c2 >> 8) & 255;
+    const b2 = c2 & 255;
+
+    const r = Math.round(r1 + (r2 - r1) * t);
+    const g = Math.round(g1 + (g2 - g1) * t);
+    const b = Math.round(b1 + (b2 - b1) * t);
+
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+  };
 
   // Define cinematic camera paths with more dynamic movements
   const cameraKeyframes: CameraKeyframe[] = [
@@ -119,20 +230,29 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     const canvas = canvasRef.current;
     const scene = new THREE.Scene();
 
-    // Cinematic gradient background - deeper, richer tones
-    const canvasBg = document.createElement('canvas');
-    canvasBg.width = 2;
-    canvasBg.height = 512;
-    const ctx = canvasBg.getContext('2d')!;
-    const gradient = ctx.createLinearGradient(0, 0, 0, 512);
-    gradient.addColorStop(0, '#0a0a15');
-    gradient.addColorStop(0.3, '#1a1a2e');
-    gradient.addColorStop(0.6, '#2d3561');
-    gradient.addColorStop(1, '#3d4a7a');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 2, 512);
-    scene.background = new THREE.CanvasTexture(canvasBg);
-    scene.fog = new THREE.Fog(0x1a1a2e, 50, 140);
+    // Dynamic sky gradient that updates with time
+    const updateSkyBackground = (skyColors: ReturnType<typeof getSkyColors>) => {
+      const canvasBg = document.createElement('canvas');
+      canvasBg.width = 2;
+      canvasBg.height = 512;
+      const ctx = canvasBg.getContext('2d')!;
+      const gradient = ctx.createLinearGradient(0, 0, 0, 512);
+      gradient.addColorStop(0, skyColors.top);
+      gradient.addColorStop(0.5, skyColors.middle);
+      gradient.addColorStop(1, skyColors.bottom);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 2, 512);
+      scene.background = new THREE.CanvasTexture(canvasBg);
+
+      // Update fog color to match sky
+      const fogColor = new THREE.Color(skyColors.middle);
+      scene.fog = new THREE.Fog(fogColor.getHex(), 50, 140);
+    };
+
+    // Initialize with current time
+    const sunPos = getSunPosition(currentTime);
+    const skyColors = getSkyColors(sunPos.altitude);
+    updateSkyBackground(skyColors);
 
     // Camera
     const camera = new THREE.PerspectiveCamera(
@@ -157,46 +277,39 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.3;
 
-    // Enhanced cinematic lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    // Dynamic lighting based on real sun position
+    const ambientLight = new THREE.AmbientLight(0xffffff, skyColors.ambientIntensity);
     scene.add(ambientLight);
 
-    // Main key light with enhanced shadow quality
-    const mainLight = new THREE.DirectionalLight(0xfff5e6, 2.2);
-    mainLight.position.set(30, 50, 20);
-    mainLight.castShadow = true;
-    mainLight.shadow.mapSize.width = 4096;
-    mainLight.shadow.mapSize.height = 4096;
-    mainLight.shadow.camera.left = -50;
-    mainLight.shadow.camera.right = 50;
-    mainLight.shadow.camera.top = 50;
-    mainLight.shadow.camera.bottom = -50;
-    mainLight.shadow.bias = -0.0001;
-    mainLight.shadow.normalBias = 0.02;
-    scene.add(mainLight);
+    // Sun (main directional light) - follows real sun position
+    const sunLight = new THREE.DirectionalLight(
+      new THREE.Color(skyColors.sunColor),
+      skyColors.sunIntensity
+    );
+    sunLight.position.set(sunPos.x, sunPos.y, sunPos.z);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 4096;
+    sunLight.shadow.mapSize.height = 4096;
+    sunLight.shadow.camera.left = -50;
+    sunLight.shadow.camera.right = 50;
+    sunLight.shadow.camera.top = 50;
+    sunLight.shadow.camera.bottom = -50;
+    sunLight.shadow.bias = -0.0001;
+    sunLight.shadow.normalBias = 0.02;
+    scene.add(sunLight);
 
-    // Cool fill light
-    const fillLight = new THREE.DirectionalLight(0x8fb4ff, 0.8);
-    fillLight.position.set(-20, 30, -20);
-    scene.add(fillLight);
+    // Sky/atmospheric fill light (opposite side of sun for realism)
+    const skyLight = new THREE.DirectionalLight(0x87CEEB, 0.3);
+    skyLight.position.set(-sunPos.x * 0.3, 20, -sunPos.z * 0.3);
+    scene.add(skyLight);
 
-    // Rim light for edge definition
-    const rimLight = new THREE.DirectionalLight(0xadd8e6, 1.0);
-    rimLight.position.set(-30, 10, 30);
-    scene.add(rimLight);
-
-    // Hemisphere light for natural ambiance
-    const hemiLight = new THREE.HemisphereLight(0x8fb4ff, 0x2a2a3e, 0.6);
+    // Hemisphere light for natural ambiance (sky and ground colors)
+    const hemiLight = new THREE.HemisphereLight(
+      new THREE.Color(skyColors.middle),
+      new THREE.Color(skyColors.bottom),
+      0.4
+    );
     scene.add(hemiLight);
-
-    // Add subtle accent lights
-    const accentLight1 = new THREE.PointLight(0x4a9eff, 0.8, 50);
-    accentLight1.position.set(15, 10, 15);
-    scene.add(accentLight1);
-
-    const accentLight2 = new THREE.PointLight(0xff6b9d, 0.6, 40);
-    accentLight2.position.set(-15, 8, -15);
-    scene.add(accentLight2);
 
     // Enhanced ground with gradient material
     const groundGeometry = new THREE.CircleGeometry(100, 64);
@@ -217,6 +330,41 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     gridHelper.material.opacity = 0.15;
     gridHelper.material.transparent = true;
     scene.add(gridHelper);
+
+    // Create procedural clouds
+    const clouds: THREE.Mesh[] = [];
+    const createClouds = () => {
+      const cloudCount = 15;
+      for (let i = 0; i < cloudCount; i++) {
+        const cloudGeometry = new THREE.SphereGeometry(8 + Math.random() * 12, 8, 8);
+        const cloudMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.15 + Math.random() * 0.15,
+          fog: false
+        });
+        const cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+
+        // Position clouds in a ring around the scene
+        const angle = (i / cloudCount) * Math.PI * 2;
+        const distance = 60 + Math.random() * 40;
+        cloud.position.set(
+          Math.cos(angle) * distance,
+          30 + Math.random() * 20,
+          Math.sin(angle) * distance
+        );
+
+        cloud.scale.set(
+          1 + Math.random() * 0.5,
+          0.6 + Math.random() * 0.3,
+          1 + Math.random() * 0.5
+        );
+
+        scene.add(cloud);
+        clouds.push(cloud);
+      }
+    };
+    createClouds();
 
     // Load house model
     const gltfLoader = new GLTFLoader();
@@ -304,50 +452,79 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
       camera.fov = THREE.MathUtils.lerp(currentFov, nextFov, easedProgress);
       camera.updateProjectionMatrix();
 
-      // Dynamic model rotation based on scroll
+      // Subtle model rotation
       if (houseModel) {
-        // Smoother rotation with acceleration/deceleration
-        houseModel.rotation.y = progress * Math.PI * 0.5 + Math.sin(progress * Math.PI) * 0.1;
-      }
-
-      // Dynamic lighting adjustment based on scroll position
-      if (mainLight) {
-        const lightAngle = progress * Math.PI * 2;
-        mainLight.position.x = Math.cos(lightAngle) * 40;
-        mainLight.position.z = Math.sin(lightAngle) * 40;
-        mainLight.position.y = 50 + Math.sin(progress * Math.PI) * 10;
+        houseModel.rotation.y = progress * Math.PI * 0.2;
       }
     };
 
     window.addEventListener('scroll', handleScroll);
     handleScroll(); // Initial call
 
+    // Real-time update interval (update sun position every minute)
+    let lastTimeUpdate = Date.now();
+    const timeUpdateInterval = 60000; // 1 minute
+
     // Animation loop
     let animationId: number;
     const animate = () => {
       animationId = requestAnimationFrame(animate);
 
-      // Very subtle breathing animation
+      const now = Date.now();
+      const time = now * 0.0003;
+
+      // Update time and sun position periodically
+      if (now - lastTimeUpdate > timeUpdateInterval) {
+        lastTimeUpdate = now;
+        const newTime = new Date();
+        setCurrentTime(newTime);
+
+        const newSunPos = getSunPosition(newTime);
+        const newSkyColors = getSkyColors(newSunPos.altitude);
+
+        // Update sun light position
+        sunLight.position.set(newSunPos.x, newSunPos.y, newSunPos.z);
+        sunLight.color = new THREE.Color(newSkyColors.sunColor);
+        sunLight.intensity = newSkyColors.sunIntensity;
+
+        // Update ambient light
+        ambientLight.intensity = newSkyColors.ambientIntensity;
+
+        // Update hemisphere light colors
+        hemiLight.color = new THREE.Color(newSkyColors.middle);
+        hemiLight.groundColor = new THREE.Color(newSkyColors.bottom);
+
+        // Update sky background
+        updateSkyBackground(newSkyColors);
+
+        // Update sky light position (opposite of sun)
+        skyLight.position.set(-newSunPos.x * 0.3, 20, -newSunPos.z * 0.3);
+      }
+
+      // Very subtle breathing animation on house
       if (houseModel) {
-        const time = Date.now() * 0.0003;
         houseModel.position.y = Math.sin(time) * 0.05;
       }
 
+      // Animate clouds - slow drift
+      clouds.forEach((cloud, i) => {
+        cloud.position.x += Math.sin(time * 0.1 + i) * 0.01;
+        cloud.position.z += Math.cos(time * 0.1 + i) * 0.01;
+        cloud.rotation.z += 0.0001;
+
+        // Keep clouds in visible range
+        const distance = Math.sqrt(cloud.position.x ** 2 + cloud.position.z ** 2);
+        if (distance > 120) {
+          const angle = Math.atan2(cloud.position.z, cloud.position.x) + Math.PI;
+          cloud.position.x = Math.cos(angle) * 70;
+          cloud.position.z = Math.sin(angle) * 70;
+        }
+      });
+
       // Subtle camera shake for cinematic feel
       if (camera) {
-        const time = Date.now() * 0.0001;
-        camera.position.x += Math.sin(time * 2) * 0.01;
-        camera.position.y += Math.cos(time * 3) * 0.008;
-      }
-
-      // Animate accent lights
-      if (accentLight1) {
-        const time = Date.now() * 0.0005;
-        accentLight1.intensity = 0.8 + Math.sin(time) * 0.2;
-      }
-      if (accentLight2) {
-        const time = Date.now() * 0.0004;
-        accentLight2.intensity = 0.6 + Math.cos(time) * 0.15;
+        camera.position.x += Math.sin(time * 2) * 0.005;
+        camera.position.y += Math.cos(time * 3) * 0.004;
       }
 
       renderer.render(scene, camera);
@@ -588,6 +765,71 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
                 }}
               />
             ))}
+          </div>
+
+          {/* Real-time info display */}
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '20px',
+            zIndex: 1000,
+            background: 'linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(45, 53, 97, 0.85) 100%)',
+            backdropFilter: 'blur(20px)',
+            padding: '20px',
+            borderRadius: '12px',
+            border: '1px solid rgba(74, 158, 255, 0.3)',
+            color: '#fff',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            lineHeight: '1.8',
+            minWidth: '220px',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.4)'
+          }}>
+            <div style={{
+              fontSize: '11px',
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              color: '#4a9eff',
+              marginBottom: '12px',
+              fontWeight: 700
+            }}>
+              Live Environment
+            </div>
+            <div style={{ marginBottom: '8px' }}>
+              <span style={{ opacity: 0.6 }}>Time:</span>{' '}
+              <span style={{ fontWeight: 600 }}>
+                {currentTime.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit'
+                })}
+              </span>
+            </div>
+            <div style={{ marginBottom: '8px' }}>
+              <span style={{ opacity: 0.6 }}>Location:</span>{' '}
+              <span style={{ fontWeight: 600 }}>Munich, DE</span>
+            </div>
+            <div style={{ marginBottom: '8px' }}>
+              <span style={{ opacity: 0.6 }}>Weather:</span>{' '}
+              <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>
+                {weather.type} {getSunPosition(currentTime).altitude > 0 ? '☀️' : '🌙'}
+              </span>
+            </div>
+            <div style={{ marginBottom: '8px' }}>
+              <span style={{ opacity: 0.6 }}>Sun Alt:</span>{' '}
+              <span style={{ fontWeight: 600 }}>
+                {(getSunPosition(currentTime).altitude * (180 / Math.PI)).toFixed(1)}°
+              </span>
+            </div>
+            <div style={{
+              marginTop: '12px',
+              paddingTop: '12px',
+              borderTop: '1px solid rgba(74, 158, 255, 0.2)',
+              fontSize: '10px',
+              opacity: 0.7
+            }}>
+              Physically accurate sun position & shadows
+            </div>
           </div>
         </>
       )}
