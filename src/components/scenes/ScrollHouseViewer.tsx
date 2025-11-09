@@ -45,6 +45,7 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     externalTestWeather || { type: 'clear', intensity: 0.7 }
   );
   const scrollProgressRef = useRef(0);
+  const lastWeatherTypeRef = useRef<string>(externalTestWeather?.type || 'clear');
 
   // Use external test time if provided
   const activeTime = externalTestMode && externalTestTime ? externalTestTime : currentTime;
@@ -64,74 +65,88 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     };
   };
 
-  // Get sky colors based on sun altitude
-  const getSkyColors = (altitude: number) => {
+  // Get sky colors based on sun altitude and weather
+  const getSkyColors = (altitude: number, weatherCondition: WeatherCondition) => {
     const altitudeDeg = altitude * (180 / Math.PI);
 
-    // Night: altitude < -18°
-    // Twilight: -18° < altitude < 0°
-    // Day: altitude > 0°
+    // Weather modifiers
+    const weatherDarkness = weatherCondition.type === 'cloudy' ? 0.7 :
+                           weatherCondition.type === 'rainy' ? 0.5 :
+                           weatherCondition.type === 'foggy' ? 0.6 : 1.0;
 
-    if (altitudeDeg < -18) {
-      // Deep night - very dark
-      return {
-        top: '#000005',
-        middle: '#000510',
-        bottom: '#050510',
-        sunColor: '#8888ff',
-        ambientIntensity: 0.05,
-        sunIntensity: 0,
-        exposure: 0.4
-      };
-    } else if (altitudeDeg < -6) {
-      // Twilight - stars fading
-      const t = (altitudeDeg + 18) / 12;
-      return {
-        top: lerpColor('#000005', '#1a1a3e', t),
-        middle: lerpColor('#000510', '#2d2561', t),
-        bottom: lerpColor('#050510', '#5a3a2a', t),
-        sunColor: '#ff6633',
-        ambientIntensity: 0.05 + t * 0.15,
-        sunIntensity: t * 0.3,
-        exposure: 0.4 + t * 0.3
-      };
-    } else if (altitudeDeg < 0) {
-      // Dawn/Dusk - golden hour begins
-      const t = (altitudeDeg + 6) / 6;
-      return {
-        top: lerpColor('#1a1a3e', '#ff6b4a', t),
-        middle: lerpColor('#2d2561', '#ff8855', t),
-        bottom: lerpColor('#5a3a2a', '#ffaa66', t),
-        sunColor: '#ffaa44',
-        ambientIntensity: 0.2 + t * 0.3,
-        sunIntensity: 0.3 + t * 1.0,
-        exposure: 0.7 + t * 0.3
-      };
-    } else if (altitudeDeg < 15) {
-      // Early morning/late evening - warm light
-      const t = altitudeDeg / 15;
-      return {
-        top: lerpColor('#ff6b4a', '#87CEEB', t),
-        middle: lerpColor('#ff8855', '#a0d0f0', t),
-        bottom: lerpColor('#ffaa66', '#ffd89b', t),
-        sunColor: '#ffeedd',
-        ambientIntensity: 0.5 + t * 0.3,
-        sunIntensity: 1.3 + t * 0.7,
-        exposure: 1.0 + t * 0.3
-      };
-    } else {
-      // Full daylight - bright and clear
-      const t = Math.min((altitudeDeg - 15) / 45, 1);
-      return {
-        top: lerpColor('#87CEEB', '#4a90e2', t),
-        middle: lerpColor('#a0d0f0', '#87CEEB', t),
-        bottom: lerpColor('#ffd89b', '#b0e0ff', t),
-        sunColor: '#fffaf0',
-        ambientIntensity: 0.8 + t * 0.2,
-        sunIntensity: 2.0 + t * 0.5,
-        exposure: 1.3 + t * 0.2
-      };
-    }
+    const baseColors = (() => {
+      if (altitudeDeg < -18) {
+        // Deep night - very dark
+        return {
+          top: '#000005',
+          middle: '#000510',
+          bottom: '#050510',
+          sunColor: '#8888ff',
+          ambientIntensity: 0.05,
+          sunIntensity: 0,
+          exposure: 0.4
+        };
+      } else if (altitudeDeg < -6) {
+        // Twilight - stars fading
+        const t = (altitudeDeg + 18) / 12;
+        return {
+          top: lerpColor('#000005', '#1a1a3e', t),
+          middle: lerpColor('#000510', '#2d2561', t),
+          bottom: lerpColor('#050510', '#5a3a2a', t),
+          sunColor: '#ff6633',
+          ambientIntensity: 0.05 + t * 0.15,
+          sunIntensity: t * 0.3,
+          exposure: 0.4 + t * 0.3
+        };
+      } else if (altitudeDeg < 0) {
+        // Dawn/Dusk - golden hour begins
+        const t = (altitudeDeg + 6) / 6;
+        return {
+          top: lerpColor('#1a1a3e', '#ff6b4a', t),
+          middle: lerpColor('#2d2561', '#ff8855', t),
+          bottom: lerpColor('#5a3a2a', '#ffaa66', t),
+          sunColor: '#ffaa44',
+          ambientIntensity: 0.2 + t * 0.3,
+          sunIntensity: 0.3 + t * 1.0,
+          exposure: 0.7 + t * 0.3
+        };
+      } else if (altitudeDeg < 15) {
+        // Early morning/late evening - warm light
+        const t = altitudeDeg / 15;
+        return {
+          top: lerpColor('#ff6b4a', '#87CEEB', t),
+          middle: lerpColor('#ff8855', '#a0d0f0', t),
+          bottom: lerpColor('#ffaa66', '#ffd89b', t),
+          sunColor: '#ffeedd',
+          ambientIntensity: 0.5 + t * 0.3,
+          sunIntensity: 1.3 + t * 0.7,
+          exposure: 1.0 + t * 0.3
+        };
+      } else {
+        // Full daylight - bright and clear
+        const t = Math.min((altitudeDeg - 15) / 45, 1);
+        return {
+          top: lerpColor('#87CEEB', '#4a90e2', t),
+          middle: lerpColor('#a0d0f0', '#87CEEB', t),
+          bottom: lerpColor('#ffd89b', '#b0e0ff', t),
+          sunColor: '#fffaf0',
+          ambientIntensity: 0.8 + t * 0.2,
+          sunIntensity: 2.0 + t * 0.5,
+          exposure: 1.3 + t * 0.2
+        };
+      }
+    })();
+
+    // Apply weather modifications
+    return {
+      ...baseColors,
+      ambientIntensity: baseColors.ambientIntensity * weatherDarkness,
+      sunIntensity: baseColors.sunIntensity * weatherDarkness,
+      exposure: baseColors.exposure * weatherDarkness,
+      fogDensity: weatherCondition.type === 'foggy' ? 0.02 : 0.005,
+      fogNear: weatherCondition.type === 'foggy' ? 10 : 50,
+      fogFar: weatherCondition.type === 'foggy' ? 60 : 140
+    };
   };
 
   // Helper function to interpolate between colors
@@ -262,14 +277,14 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
       ctx.fillRect(0, 0, 2, 512);
       scene.background = new THREE.CanvasTexture(canvasBg);
 
-      // Update fog color to match sky
+      // Update fog color and density based on weather
       const fogColor = new THREE.Color(skyColors.middle);
-      scene.fog = new THREE.Fog(fogColor.getHex(), 50, 140);
+      scene.fog = new THREE.Fog(fogColor.getHex(), skyColors.fogNear, skyColors.fogFar);
     };
 
     // Initialize with active time
     const sunPos = getSunPosition(activeTime);
-    const skyColors = getSkyColors(sunPos.altitude);
+    const skyColors = getSkyColors(sunPos.altitude, activeWeather);
     updateSkyBackground(skyColors);
 
     // Create visible sun sphere
@@ -450,16 +465,29 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     gridHelper.material.transparent = true;
     scene.add(gridHelper);
 
-    // Create procedural clouds
+    // Create procedural clouds with weather-reactive count
     const clouds: THREE.Mesh[] = [];
-    const createClouds = () => {
-      const cloudCount = 15;
+    const createClouds = (weatherType: string) => {
+      // Clear existing clouds
+      clouds.forEach(cloud => scene.remove(cloud));
+      clouds.length = 0;
+
+      const cloudCount = weatherType === 'clear' ? 5 :
+                        weatherType === 'cloudy' ? 30 :
+                        weatherType === 'rainy' ? 40 :
+                        weatherType === 'foggy' ? 20 : 15;
+
+      const baseOpacity = weatherType === 'clear' ? 0.1 :
+                         weatherType === 'cloudy' ? 0.3 :
+                         weatherType === 'rainy' ? 0.4 :
+                         weatherType === 'foggy' ? 0.5 : 0.15;
+
       for (let i = 0; i < cloudCount; i++) {
         const cloudGeometry = new THREE.SphereGeometry(8 + Math.random() * 12, 8, 8);
         const cloudMaterial = new THREE.MeshBasicMaterial({
-          color: 0xffffff,
+          color: weatherType === 'rainy' ? 0x888888 : 0xffffff,
           transparent: true,
-          opacity: 0.15 + Math.random() * 0.15,
+          opacity: baseOpacity + Math.random() * 0.15,
           fog: false
         });
         const cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
@@ -467,9 +495,10 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
         // Position clouds in a ring around the scene
         const angle = (i / cloudCount) * Math.PI * 2;
         const distance = 60 + Math.random() * 40;
+        const heightOffset = weatherType === 'foggy' ? 10 : 30;
         cloud.position.set(
           Math.cos(angle) * distance,
-          30 + Math.random() * 20,
+          heightOffset + Math.random() * 20,
           Math.sin(angle) * distance
         );
 
@@ -483,7 +512,33 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
         clouds.push(cloud);
       }
     };
-    createClouds();
+    createClouds(activeWeather.type);
+
+    // Create rain particles
+    const rainGeometry = new THREE.BufferGeometry();
+    const rainCount = 1000;
+    const rainPositions: number[] = [];
+    const rainVelocities: number[] = [];
+
+    for (let i = 0; i < rainCount; i++) {
+      rainPositions.push(
+        Math.random() * 100 - 50,
+        Math.random() * 50,
+        Math.random() * 100 - 50
+      );
+      rainVelocities.push(Math.random() * 0.1 + 0.1);
+    }
+
+    rainGeometry.setAttribute('position', new THREE.Float32BufferAttribute(rainPositions, 3));
+    const rainMaterial = new THREE.PointsMaterial({
+      color: 0xaaaaaa,
+      size: 0.1,
+      transparent: true,
+      opacity: activeWeather.type === 'rainy' ? 0.6 : 0,
+      fog: true
+    });
+    const rain = new THREE.Points(rainGeometry, rainMaterial);
+    scene.add(rain);
 
     // Load house model
     const gltfLoader = new GLTFLoader();
@@ -606,10 +661,21 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
       if (shouldUpdate) {
         lastTimeUpdate = now;
 
+        // Get current weather (use external test weather or default)
+        const currentWeather = externalTestMode && externalTestWeather ? externalTestWeather : weather;
+
         const newSunPos = getSunPosition(newTime);
-        const newSkyColors = getSkyColors(newSunPos.altitude);
+        const newSkyColors = getSkyColors(newSunPos.altitude, currentWeather);
         const isNight = newSunPos.altitude < -0.1;
         const isDay = newSunPos.altitude > -0.1;
+
+        // Recreate clouds if weather changed in test mode
+        if (externalTestMode && externalTestWeather && externalTestWeather.type !== lastWeatherTypeRef.current) {
+          lastWeatherTypeRef.current = externalTestWeather.type;
+          createClouds(externalTestWeather.type);
+          // Update rain visibility
+          rainMaterial.opacity = externalTestWeather.type === 'rainy' ? 0.6 : 0;
+        }
 
         // Update sun position and visibility
         sunSphere.position.set(newSunPos.x * 0.9, newSunPos.y * 0.9, newSunPos.z * 0.9);
@@ -665,19 +731,11 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
         houseModel.position.y = Math.sin(time) * 0.05;
       }
 
-      // Animate clouds - slow drift, fade at night
-      const currentSunPos = getSunPosition(newTime);
-      const cloudOpacityMultiplier = currentSunPos.altitude > 0 ? 1 : Math.max(0.2, currentSunPos.altitude / -0.3);
-
+      // Animate clouds - slow drift
       clouds.forEach((cloud, i) => {
         cloud.position.x += Math.sin(time * 0.1 + i) * 0.01;
         cloud.position.z += Math.cos(time * 0.1 + i) * 0.01;
         cloud.rotation.z += 0.0001;
-
-        // Adjust cloud opacity based on time of day
-        const baseMaterial = cloud.material as THREE.MeshBasicMaterial;
-        const baseOpacity = 0.15 + (i % 3) * 0.05;
-        baseMaterial.opacity = baseOpacity * cloudOpacityMultiplier;
 
         // Keep clouds in visible range
         const distance = Math.sqrt(cloud.position.x ** 2 + cloud.position.z ** 2);
@@ -687,6 +745,21 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
           cloud.position.z = Math.sin(angle) * 70;
         }
       });
+
+      // Animate rain
+      if (rainMaterial.opacity > 0) {
+        const positions = rainGeometry.attributes.position.array as Float32Array;
+        for (let i = 0; i < rainCount; i++) {
+          // Move rain down
+          positions[i * 3 + 1] -= rainVelocities[i];
+
+          // Reset rain to top when it falls below ground
+          if (positions[i * 3 + 1] < 0) {
+            positions[i * 3 + 1] = 50;
+          }
+        }
+        rainGeometry.attributes.position.needsUpdate = true;
+      }
 
       // Twinkle stars
       if (starsMaterial.opacity > 0) {
