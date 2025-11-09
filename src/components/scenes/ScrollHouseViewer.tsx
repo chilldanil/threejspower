@@ -21,21 +21,34 @@ interface ScrollHouseViewerProps {
   modelPath?: string;
   latitude?: number;
   longitude?: number;
+  testMode?: boolean;
+  testTime?: Date;
+  testWeather?: WeatherCondition;
+  onTimeUpdate?: (time: Date) => void;
 }
 
 export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
   modelPath = '/models/haus.glb',
   latitude = 48.1502953252508,
-  longitude = 11.567239067279655
+  longitude = 11.567239067279655,
+  testMode: externalTestMode = false,
+  testTime: externalTestTime,
+  testWeather: externalTestWeather
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentSection, setCurrentSection] = useState(0);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [weather] = useState<WeatherCondition>({ type: 'clear', intensity: 0.7 });
+  const [currentTime, setCurrentTime] = useState(externalTestTime || new Date());
+  const [weather] = useState<WeatherCondition>(
+    externalTestWeather || { type: 'clear', intensity: 0.7 }
+  );
   const scrollProgressRef = useRef(0);
+
+  // Use external test time if provided
+  const activeTime = externalTestMode && externalTestTime ? externalTestTime : currentTime;
+  const activeWeather = externalTestMode && externalTestWeather ? externalTestWeather : weather;
 
   // Calculate sun position based on real time and location
   const getSunPosition = (date: Date) => {
@@ -254,8 +267,8 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
       scene.fog = new THREE.Fog(fogColor.getHex(), 50, 140);
     };
 
-    // Initialize with current time
-    const sunPos = getSunPosition(currentTime);
+    // Initialize with active time
+    const sunPos = getSunPosition(activeTime);
     const skyColors = getSkyColors(sunPos.altitude);
     updateSkyBackground(skyColors);
 
@@ -567,7 +580,7 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     window.addEventListener('scroll', handleScroll);
     handleScroll(); // Initial call
 
-    // Real-time update interval (update sun position every minute)
+    // Real-time update interval (update sun position every minute, or faster in test mode)
     let lastTimeUpdate = Date.now();
     const timeUpdateInterval = 60000; // 1 minute
 
@@ -579,11 +592,19 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
       const now = Date.now();
       const time = now * 0.0003;
 
-      // Update time and sun position periodically
-      if (now - lastTimeUpdate > timeUpdateInterval) {
-        lastTimeUpdate = now;
-        const newTime = new Date();
+      // Update time - skip if external test mode is active
+      let newTime: Date;
+      if (externalTestMode && externalTestTime) {
+        newTime = externalTestTime;
+      } else {
+        newTime = new Date();
         setCurrentTime(newTime);
+      }
+
+      // Update sun position periodically (or always in test mode)
+      const shouldUpdate = externalTestMode ? true : (now - lastTimeUpdate > timeUpdateInterval);
+      if (shouldUpdate) {
+        lastTimeUpdate = now;
 
         const newSunPos = getSunPosition(newTime);
         const newSkyColors = getSkyColors(newSunPos.altitude);
@@ -645,7 +666,7 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
       }
 
       // Animate clouds - slow drift, fade at night
-      const currentSunPos = getSunPosition(currentTime);
+      const currentSunPos = getSunPosition(newTime);
       const cloudOpacityMultiplier = currentSunPos.altitude > 0 ? 1 : Math.max(0.2, currentSunPos.altitude / -0.3);
 
       clouds.forEach((cloud, i) => {
@@ -950,7 +971,7 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
             <div style={{ marginBottom: '8px' }}>
               <span style={{ opacity: 0.6 }}>Time:</span>{' '}
               <span style={{ fontWeight: 600 }}>
-                {currentTime.toLocaleTimeString('en-US', {
+                {activeTime.toLocaleTimeString('en-US', {
                   hour: '2-digit',
                   minute: '2-digit',
                   second: '2-digit'
@@ -964,13 +985,13 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
             <div style={{ marginBottom: '8px' }}>
               <span style={{ opacity: 0.6 }}>Weather:</span>{' '}
               <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>
-                {weather.type} {getSunPosition(currentTime).altitude > 0 ? '☀️' : '🌙'}
+                {activeWeather.type} {getSunPosition(activeTime).altitude > 0 ? '☀️' : '🌙'}
               </span>
             </div>
             <div style={{ marginBottom: '8px' }}>
               <span style={{ opacity: 0.6 }}>Sun Alt:</span>{' '}
               <span style={{ fontWeight: 600 }}>
-                {(getSunPosition(currentTime).altitude * (180 / Math.PI)).toFixed(1)}°
+                {(getSunPosition(activeTime).altitude * (180 / Math.PI)).toFixed(1)}°
               </span>
             </div>
             <div style={{
