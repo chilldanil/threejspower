@@ -13,6 +13,9 @@ import type { ScrollHouseViewerProps, WeatherCondition } from '../../types/three
 import { cameraKeyframes } from '../../config/cameraKeyframes';
 import { getSkyColors } from '../../config/skyColorConfig';
 
+// Utilities
+import { getSunPosition } from '../../utilities/sunPositionCalculator';
+
 // Hooks
 import { useSunPosition } from '../../hooks/useSunPosition';
 import { useScrollAnimation } from '../../hooks/useScrollAnimation';
@@ -184,24 +187,32 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
+    // Calculate initial sun position
+    const initialSunPos = getSunPosition(activeTime, latitude, longitude);
+    const initialMoonPos = {
+      x: -initialSunPos.x * 0.9,
+      y: Math.abs(initialSunPos.y * 0.9) + 10,
+      z: -initialSunPos.z * 0.9
+    };
+
     // Get initial sky colors
-    const skyColors = getSkyColors(sunPosition.altitude, activeWeather);
+    const skyColors = getSkyColors(initialSunPos.altitude, activeWeather);
 
     // Setup sky background
     createSkyBackground(scene, skyColors);
 
     // Create celestial objects
-    const sunObjects = createSun(sunPosition, skyColors);
+    const sunObjects = createSun(initialSunPos, skyColors);
     scene.add(sunObjects.sunSphere);
     scene.add(sunObjects.sunGlow);
     sunObjectsRef.current = sunObjects;
 
-    const moonObjects = createMoon(moonPosition, sunPosition.altitude);
+    const moonObjects = createMoon(initialMoonPos, initialSunPos.altitude);
     scene.add(moonObjects.moonSphere);
     scene.add(moonObjects.moonGlow);
     moonObjectsRef.current = moonObjects;
 
-    const starsObjects = createStars(sunPosition.altitude);
+    const starsObjects = createStars(initialSunPos.altitude);
     scene.add(starsObjects.stars);
     starsObjectsRef.current = starsObjects;
 
@@ -231,7 +242,7 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     rendererRef.current = renderer;
 
     // Create lights
-    const lights = createLights(sunPosition, moonPosition, skyColors);
+    const lights = createLights(initialSunPos, initialMoonPos, skyColors);
     scene.add(lights.ambientLight);
     scene.add(lights.sunLight);
     scene.add(lights.skyLight);
