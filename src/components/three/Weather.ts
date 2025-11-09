@@ -1,5 +1,5 @@
 /**
- * Weather effects module - handles clouds and rain
+ * Weather effects module - handles clouds, rain, and snow
  */
 
 import * as THREE from 'three';
@@ -20,8 +20,12 @@ export const createClouds = (scene: THREE.Scene, weatherType: string): THREE.Mes
       8,
       8
     );
+    let cloudColor: number = WEATHER_CONFIG.CLOUD_COLOR_NORMAL;
+    if (weatherType === 'rainy') cloudColor = WEATHER_CONFIG.CLOUD_COLOR_RAINY;
+    if (weatherType === 'snowy') cloudColor = WEATHER_CONFIG.CLOUD_COLOR_SNOWY;
+
     const cloudMaterial = new THREE.MeshBasicMaterial({
-      color: weatherType === 'rainy' ? WEATHER_CONFIG.CLOUD_COLOR_RAINY : WEATHER_CONFIG.CLOUD_COLOR_NORMAL,
+      color: cloudColor as THREE.ColorRepresentation,
       transparent: true,
       opacity: baseOpacity + Math.random() * WEATHER_CONFIG.CLOUD_OPACITY_VARIATION,
       fog: false
@@ -123,6 +127,69 @@ export const animateRain = (
       }
     }
     rainGeometry.attributes.position.needsUpdate = true;
+  }
+};
+
+/**
+ * Creates snow particle system
+ */
+export const createSnow = (isSnowy: boolean) => {
+  const snowGeometry = new THREE.BufferGeometry();
+  const snowPositions: number[] = [];
+  const snowVelocities: number[] = [];
+  const snowDrift: number[] = [];
+
+  for (let i = 0; i < WEATHER_CONFIG.SNOW_COUNT; i++) {
+    snowPositions.push(
+      Math.random() * WEATHER_CONFIG.SNOW_SPREAD - WEATHER_CONFIG.SNOW_SPREAD / 2,
+      Math.random() * WEATHER_CONFIG.SNOW_HEIGHT,
+      Math.random() * WEATHER_CONFIG.SNOW_SPREAD - WEATHER_CONFIG.SNOW_SPREAD / 2
+    );
+    snowVelocities.push(Math.random() * WEATHER_CONFIG.SNOW_VELOCITY_RANGE + WEATHER_CONFIG.SNOW_VELOCITY_MIN);
+    snowDrift.push(Math.random() * Math.PI * 2); // Random drift phase
+  }
+
+  snowGeometry.setAttribute('position', new THREE.Float32BufferAttribute(snowPositions, 3));
+  const snowMaterial = new THREE.PointsMaterial({
+    color: WEATHER_CONFIG.SNOW_COLOR,
+    size: WEATHER_CONFIG.SNOW_SIZE,
+    transparent: true,
+    opacity: isSnowy ? WEATHER_CONFIG.SNOW_OPACITY : 0,
+    fog: true
+  });
+  const snow = new THREE.Points(snowGeometry, snowMaterial);
+
+  return { snow, snowMaterial, snowVelocities, snowDrift };
+};
+
+/**
+ * Animates snow particles with gentle falling and horizontal drift
+ */
+export const animateSnow = (
+  snowGeometry: THREE.BufferGeometry,
+  snowVelocities: number[],
+  snowDrift: number[],
+  snowMaterial: THREE.PointsMaterial,
+  time: number
+): void => {
+  if (snowMaterial.opacity > 0) {
+    const positions = snowGeometry.attributes.position.array as Float32Array;
+    for (let i = 0; i < WEATHER_CONFIG.SNOW_COUNT; i++) {
+      // Move snow down slowly
+      positions[i * 3 + 1] -= snowVelocities[i];
+
+      // Add horizontal drift
+      positions[i * 3] += Math.sin(time * 0.001 + snowDrift[i]) * WEATHER_CONFIG.SNOW_DRIFT_SPEED;
+      positions[i * 3 + 2] += Math.cos(time * 0.001 + snowDrift[i]) * WEATHER_CONFIG.SNOW_DRIFT_SPEED;
+
+      // Reset snow to top when it falls below ground
+      if (positions[i * 3 + 1] < 0) {
+        positions[i * 3 + 1] = WEATHER_CONFIG.SNOW_HEIGHT;
+        positions[i * 3] = Math.random() * WEATHER_CONFIG.SNOW_SPREAD - WEATHER_CONFIG.SNOW_SPREAD / 2;
+        positions[i * 3 + 2] = Math.random() * WEATHER_CONFIG.SNOW_SPREAD - WEATHER_CONFIG.SNOW_SPREAD / 2;
+      }
+    }
+    snowGeometry.attributes.position.needsUpdate = true;
   }
 };
 

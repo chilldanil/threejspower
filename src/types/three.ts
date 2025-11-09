@@ -11,7 +11,7 @@ export interface CameraKeyframe {
 }
 
 export interface WeatherCondition {
-  type: 'clear' | 'cloudy' | 'rainy' | 'foggy';
+  type: 'clear' | 'cloudy' | 'rainy' | 'foggy' | 'snowy';
   intensity: number;
 }
 

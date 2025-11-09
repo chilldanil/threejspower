@@ -33,8 +33,10 @@ import { createLights, updateLights, type SceneLights } from '../three/Lighting'
 import {
   createClouds,
   createRain,
+  createSnow,
   animateClouds,
   animateRain,
+  animateSnow,
   removeClouds
 } from '../three/Weather';
 import { loadModel } from '../three/ModelLoader';
@@ -81,6 +83,7 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
   const starsObjectsRef = useRef<ReturnType<typeof createStars> | null>(null);
   const cloudsRef = useRef<THREE.Mesh[]>([]);
   const rainObjectsRef = useRef<ReturnType<typeof createRain> | null>(null);
+  const snowObjectsRef = useRef<ReturnType<typeof createSnow> | null>(null);
   const lastWeatherTypeRef = useRef<string>(externalTestWeather?.type || 'clear');
 
   // Use external test values if provided
@@ -176,6 +179,12 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
         rainObjectsRef.current.rainMaterial.opacity =
           activeWeather.type === 'rainy' ? 0.6 : 0;
       }
+
+      // Update snow visibility
+      if (snowObjectsRef.current) {
+        snowObjectsRef.current.snowMaterial.opacity =
+          activeWeather.type === 'snowy' ? 0.8 : 0;
+      }
     }
   }, [activeWeather.type]);
 
@@ -265,6 +274,10 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     scene.add(rainObjects.rain);
     rainObjectsRef.current = rainObjects;
 
+    const snowObjects = createSnow(activeWeather.type === 'snowy');
+    scene.add(snowObjects.snow);
+    snowObjectsRef.current = snowObjects;
+
     // Load 3D model
     loadModel(modelPath, {
       onLoad: (model) => {
@@ -315,6 +328,17 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
           rainObjectsRef.current.rain.geometry,
           rainObjectsRef.current.rainVelocities,
           rainObjectsRef.current.rainMaterial
+        );
+      }
+
+      // Animate snow
+      if (snowObjectsRef.current) {
+        animateSnow(
+          snowObjectsRef.current.snow.geometry,
+          snowObjectsRef.current.snowVelocities,
+          snowObjectsRef.current.snowDrift,
+          snowObjectsRef.current.snowMaterial,
+          now
         );
       }
 

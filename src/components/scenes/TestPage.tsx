@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ScrollHouseViewer } from './ScrollHouseViewer';
+import { getAllTimePresets, getAllWeatherPresets, type WeatherType } from '../../config/presetConfig';
 
 export const TestPage: React.FC = () => {
   const [testTime, setTestTime] = useState<Date>(new Date());
   const [timeSpeed, setTimeSpeed] = useState(1);
-  const [weatherType, setWeatherType] = useState<'clear' | 'cloudy' | 'rainy' | 'foggy'>('clear');
+  const [weatherType, setWeatherType] = useState<WeatherType>('clear');
   const [isPlaying, setIsPlaying] = useState(false);
   const lastUpdateRef = useRef<number>(Date.now());
 
@@ -26,16 +27,8 @@ export const TestPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [isPlaying, timeSpeed]);
 
-  const presetTimes = [
-    { label: 'Midnight', hours: 0, minutes: 0 },
-    { label: 'Sunrise', hours: 6, minutes: 30 },
-    { label: 'Morning', hours: 9, minutes: 0 },
-    { label: 'Noon', hours: 12, minutes: 0 },
-    { label: 'Afternoon', hours: 15, minutes: 0 },
-    { label: 'Sunset', hours: 18, minutes: 30 },
-    { label: 'Dusk', hours: 20, minutes: 0 },
-    { label: 'Night', hours: 22, minutes: 0 },
-  ];
+  const timePresets = getAllTimePresets();
+  const weatherPresets = getAllWeatherPresets();
 
   const setPresetTime = (hours: number, minutes: number) => {
     const newTime = new Date(testTime);
@@ -137,10 +130,10 @@ export const TestPage: React.FC = () => {
               gridTemplateColumns: 'repeat(4, 1fr)',
               gap: '6px'
             }}>
-              {presetTimes.map((preset) => (
+              {timePresets.map((preset) => (
                 <button
-                  key={preset.label}
-                  onClick={() => setPresetTime(preset.hours, preset.minutes)}
+                  key={preset.name}
+                  onClick={() => setPresetTime(preset.hour, preset.minute)}
                   style={{
                     padding: '8px 4px',
                     background: 'rgba(74, 158, 255, 0.2)',
@@ -154,8 +147,9 @@ export const TestPage: React.FC = () => {
                   }}
                   onMouseOver={(e) => e.currentTarget.style.background = 'rgba(74, 158, 255, 0.4)'}
                   onMouseOut={(e) => e.currentTarget.style.background = 'rgba(74, 158, 255, 0.2)'}
+                  title={preset.description}
                 >
-                  {preset.label}
+                  {preset.emoji} {preset.label}
                 </button>
               ))}
             </div>
@@ -237,16 +231,16 @@ export const TestPage: React.FC = () => {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-            {(['clear', 'cloudy', 'rainy', 'foggy'] as const).map((type) => (
+            {weatherPresets.map((preset) => (
               <button
-                key={type}
-                onClick={() => setWeatherType(type)}
+                key={preset.name}
+                onClick={() => setWeatherType(preset.name)}
                 style={{
                   padding: '12px',
-                  background: weatherType === type
+                  background: weatherType === preset.name
                     ? 'rgba(74, 158, 255, 0.4)'
                     : 'rgba(74, 158, 255, 0.1)',
-                  border: `2px solid ${weatherType === type
+                  border: `2px solid ${weatherType === preset.name
                     ? 'rgba(74, 158, 255, 0.8)'
                     : 'rgba(74, 158, 255, 0.2)'}`,
                   borderRadius: '8px',
@@ -254,15 +248,21 @@ export const TestPage: React.FC = () => {
                   fontSize: '13px',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  textTransform: 'capitalize',
                   transition: 'all 0.2s'
                 }}
+                title={preset.description}
+                onMouseOver={(e) => {
+                  if (weatherType !== preset.name) {
+                    e.currentTarget.style.background = 'rgba(74, 158, 255, 0.25)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (weatherType !== preset.name) {
+                    e.currentTarget.style.background = 'rgba(74, 158, 255, 0.1)';
+                  }
+                }}
               >
-                {type === 'clear' && '☀️ '}
-                {type === 'cloudy' && '☁️ '}
-                {type === 'rainy' && '🌧️ '}
-                {type === 'foggy' && '🌫️ '}
-                {type}
+                {preset.emoji} {preset.label}
               </button>
             ))}
           </div>
