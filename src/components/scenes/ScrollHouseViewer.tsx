@@ -24,8 +24,7 @@ import {
   createMoon,
   createStars,
   updateSun,
-  updateMoon,
-  updateStars
+  updateMoon
 } from '../three/Sky';
 import { createLights, updateLights, type SceneLights } from '../three/Lighting';
 import {
@@ -99,6 +98,83 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     onSectionChange: setCurrentSection,
     onProgressChange: setScrollProgress
   });
+
+  // Separate effect to update scene when test props change
+  useEffect(() => {
+    if (!sceneRef.current || !rendererRef.current) return;
+
+    const scene = sceneRef.current;
+    const currentSunPos = sunPosition;
+    const currentMoonPos = moonPosition;
+    const currentSkyColors = getSkyColors(currentSunPos.altitude, activeWeather);
+
+    // Update sky background
+    createSkyBackground(scene, currentSkyColors);
+
+    // Update celestial objects
+    if (sunObjectsRef.current) {
+      updateSun(
+        sunObjectsRef.current.sunSphere,
+        sunObjectsRef.current.sunGlow,
+        sunObjectsRef.current.sunMaterial,
+        sunObjectsRef.current.sunGlowMaterial,
+        currentSunPos,
+        currentSkyColors,
+        isDay
+      );
+    }
+
+    if (moonObjectsRef.current) {
+      updateMoon(
+        moonObjectsRef.current.moonSphere,
+        moonObjectsRef.current.moonGlow,
+        currentMoonPos,
+        isNight
+      );
+    }
+
+    if (starsObjectsRef.current) {
+      starsObjectsRef.current.starsMaterial.opacity = isNight
+        ? Math.min(1, (Math.abs(currentSunPos.altitude) - 0.1) / 0.5)
+        : 0;
+    }
+
+    // Update lights
+    if (lightsRef.current) {
+      updateLights(
+        lightsRef.current,
+        currentSunPos,
+        currentMoonPos,
+        currentSkyColors,
+        isDay,
+        isNight
+      );
+    }
+
+    // Update renderer exposure
+    rendererRef.current.toneMappingExposure = currentSkyColors.exposure;
+  }, [sunPosition, moonPosition, activeWeather, isDay, isNight]);
+
+  // Effect to handle weather changes
+  useEffect(() => {
+    if (!sceneRef.current) return;
+
+    // Recreate clouds when weather changes
+    if (lastWeatherTypeRef.current !== activeWeather.type) {
+      lastWeatherTypeRef.current = activeWeather.type;
+
+      if (sceneRef.current && cloudsRef.current.length > 0) {
+        removeClouds(sceneRef.current, cloudsRef.current);
+        cloudsRef.current = createClouds(sceneRef.current, activeWeather.type);
+      }
+
+      // Update rain visibility
+      if (rainObjectsRef.current) {
+        rainObjectsRef.current.rainMaterial.opacity =
+          activeWeather.type === 'rainy' ? 0.6 : 0;
+      }
+    }
+  }, [activeWeather.type]);
 
   // Main Three.js scene setup effect
   useEffect(() => {
@@ -206,81 +282,12 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
 
       // Update time - skip if external test mode is active
       if (!externalTestMode || !externalTestTime) {
-        const newTime = new Date();
-        setCurrentTime(newTime);
-      }
-
-      // Update sun position periodically (or always in test mode)
-      const shouldUpdate = externalTestMode ? true : (now - lastTimeUpdate > timeUpdateInterval);
-      if (shouldUpdate) {
-        lastTimeUpdate = now;
-
-        const currentSunPos = sunPosition;
-        const currentMoonPos = moonPosition;
-        const currentSkyColors = getSkyColors(currentSunPos.altitude, activeWeather);
-
-        // Recreate clouds if weather changed in test mode
-        if (
-          externalTestMode &&
-          externalTestWeather &&
-          externalTestWeather.type !== lastWeatherTypeRef.current
-        ) {
-          lastWeatherTypeRef.current = externalTestWeather.type;
-          removeClouds(scene, cloudsRef.current);
-          cloudsRef.current = createClouds(scene, externalTestWeather.type);
-
-          // Update rain visibility
-          if (rainObjectsRef.current) {
-            rainObjectsRef.current.rainMaterial.opacity =
-              externalTestWeather.type === 'rainy' ? 0.6 : 0;
-          }
+        const shouldUpdateTime = (now - lastTimeUpdate > timeUpdateInterval);
+        if (shouldUpdateTime) {
+          lastTimeUpdate = now;
+          const newTime = new Date();
+          setCurrentTime(newTime);
         }
-
-        // Update celestial objects
-        if (sunObjectsRef.current) {
-          updateSun(
-            sunObjectsRef.current.sunSphere,
-            sunObjectsRef.current.sunGlow,
-            sunObjectsRef.current.sunMaterial,
-            sunObjectsRef.current.sunGlowMaterial,
-            currentSunPos,
-            currentSkyColors,
-            isDay
-          );
-        }
-
-        if (moonObjectsRef.current) {
-          updateMoon(
-            moonObjectsRef.current.moonSphere,
-            moonObjectsRef.current.moonGlow,
-            currentMoonPos,
-            isNight
-          );
-        }
-
-        if (starsObjectsRef.current) {
-          starsObjectsRef.current.starsMaterial.opacity = isNight
-            ? Math.min(1, (Math.abs(currentSunPos.altitude) - 0.1) / 0.5)
-            : 0;
-        }
-
-        // Update lights
-        if (lightsRef.current) {
-          updateLights(
-            lightsRef.current,
-            currentSunPos,
-            currentMoonPos,
-            currentSkyColors,
-            isDay,
-            isNight
-          );
-        }
-
-        // Update renderer exposure
-        renderer.toneMappingExposure = currentSkyColors.exposure;
-
-        // Update sky background
-        createSkyBackground(scene, currentSkyColors);
       }
 
       // Animate house model (subtle breathing)
@@ -300,9 +307,22 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
         );
       }
 
-      // Animate stars
+      // Animate stars with current sun position
       if (starsObjectsRef.current) {
-        updateStars(starsObjectsRef.current.starsMaterial, sunPosition.altitude, time);
+        // Get current sun position for star animation
+        const currentSunAltitude = sunPosition.altitude;
+        const currentIsNight = currentSunAltitude < -0.1;
+
+        if (currentIsNight) {
+          const opacity = Math.min(1, (Math.abs(currentSunAltitude) - 0.1) / 0.5);
+          starsObjectsRef.current.starsMaterial.opacity = opacity;
+
+          // Twinkle effect
+          const twinkle = (Math.sin(time * 5) + 1) * 0.05;
+          starsObjectsRef.current.starsMaterial.size = 0.5 + twinkle;
+        } else {
+          starsObjectsRef.current.starsMaterial.opacity = 0;
+        }
       }
 
       // Subtle camera shake
