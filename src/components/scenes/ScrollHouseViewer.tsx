@@ -19,6 +19,7 @@ import { getSunPosition } from '../../utilities/sunPositionCalculator';
 // Hooks
 import { useSunPosition } from '../../hooks/useSunPosition';
 import { useScrollAnimation } from '../../hooks/useScrollAnimation';
+import { useWeatherApi } from '../../hooks/useWeatherApi';
 
 // Three.js modules
 import {
@@ -56,7 +57,8 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
   longitude = 11.567239067279655,
   testMode: externalTestMode = false,
   testTime: externalTestTime,
-  testWeather: externalTestWeather
+  testWeather: externalTestWeather,
+  useRealTimeWeather = false
 }) => {
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
@@ -86,9 +88,27 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
   const snowObjectsRef = useRef<ReturnType<typeof createSnow> | null>(null);
   const lastWeatherTypeRef = useRef<string>(externalTestWeather?.type || 'clear');
 
-  // Use external test values if provided
+  // Fetch real-time weather if enabled
+  const { weatherType: realTimeWeatherType } = useWeatherApi({
+    latitude,
+    longitude,
+    enabled: useRealTimeWeather && !externalTestMode,
+    refreshInterval: 600000 // Refresh every 10 minutes
+  });
+
+  // Use external test values if provided, otherwise use real-time or default
   const activeTime = externalTestMode && externalTestTime ? externalTestTime : currentTime;
-  const activeWeather = externalTestMode && externalTestWeather ? externalTestWeather : weather;
+
+  const activeWeather: WeatherCondition = (() => {
+    // Priority: external test weather > real-time weather > default weather
+    if (externalTestMode && externalTestWeather) {
+      return externalTestWeather;
+    }
+    if (useRealTimeWeather && realTimeWeatherType) {
+      return { type: realTimeWeatherType, intensity: 0.7 };
+    }
+    return weather;
+  })();
 
   // Custom hooks
   const { sunPosition, moonPosition, isNight, isDay } = useSunPosition(

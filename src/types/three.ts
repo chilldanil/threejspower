@@ -22,6 +22,7 @@ export interface ScrollHouseViewerProps {
   testMode?: boolean;
   testTime?: Date;
   testWeather?: WeatherCondition;
+  useRealTimeWeather?: boolean;
   onTimeUpdate?: (time: Date) => void;
 }
 

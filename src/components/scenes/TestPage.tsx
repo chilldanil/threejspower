@@ -7,6 +7,7 @@ export const TestPage: React.FC = () => {
   const [timeSpeed, setTimeSpeed] = useState(1);
   const [weatherType, setWeatherType] = useState<WeatherType>('clear');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [useRealTimeWeather, setUseRealTimeWeather] = useState(false);
   const lastUpdateRef = useRef<number>(Date.now());
 
   // Update time when playing
@@ -234,30 +235,32 @@ export const TestPage: React.FC = () => {
             {weatherPresets.map((preset) => (
               <button
                 key={preset.name}
-                onClick={() => setWeatherType(preset.name)}
+                onClick={() => !useRealTimeWeather && setWeatherType(preset.name)}
+                disabled={useRealTimeWeather}
                 style={{
                   padding: '12px',
-                  background: weatherType === preset.name
+                  background: weatherType === preset.name && !useRealTimeWeather
                     ? 'rgba(74, 158, 255, 0.4)'
                     : 'rgba(74, 158, 255, 0.1)',
-                  border: `2px solid ${weatherType === preset.name
+                  border: `2px solid ${weatherType === preset.name && !useRealTimeWeather
                     ? 'rgba(74, 158, 255, 0.8)'
                     : 'rgba(74, 158, 255, 0.2)'}`,
                   borderRadius: '8px',
                   color: '#fff',
                   fontSize: '13px',
                   fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  cursor: useRealTimeWeather ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: useRealTimeWeather ? 0.4 : 1
                 }}
-                title={preset.description}
+                title={useRealTimeWeather ? 'Disabled (using real-time weather)' : preset.description}
                 onMouseOver={(e) => {
-                  if (weatherType !== preset.name) {
+                  if (weatherType !== preset.name && !useRealTimeWeather) {
                     e.currentTarget.style.background = 'rgba(74, 158, 255, 0.25)';
                   }
                 }}
                 onMouseOut={(e) => {
-                  if (weatherType !== preset.name) {
+                  if (weatherType !== preset.name && !useRealTimeWeather) {
                     e.currentTarget.style.background = 'rgba(74, 158, 255, 0.1)';
                   }
                 }}
@@ -265,6 +268,47 @@ export const TestPage: React.FC = () => {
                 {preset.emoji} {preset.label}
               </button>
             ))}
+          </div>
+
+          {/* Real-time Weather Toggle */}
+          <div style={{ marginTop: '12px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '12px',
+              background: useRealTimeWeather ? 'rgba(74, 255, 158, 0.15)' : 'rgba(74, 158, 255, 0.1)',
+              border: `2px solid ${useRealTimeWeather ? 'rgba(74, 255, 158, 0.4)' : 'rgba(74, 158, 255, 0.2)'}`,
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}>
+              <input
+                type="checkbox"
+                checked={useRealTimeWeather}
+                onChange={(e) => {
+                  setUseRealTimeWeather(e.target.checked);
+                  if (e.target.checked) {
+                    // Disable manual weather selection when real-time is enabled
+                    console.log('Real-time weather enabled');
+                  }
+                }}
+                style={{
+                  marginRight: '8px',
+                  width: '16px',
+                  height: '16px',
+                  cursor: 'pointer',
+                  accentColor: '#4aff9e'
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>
+                  🌍 Use Real-Time Weather
+                </div>
+                <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '2px' }}>
+                  Fetch current weather from OpenWeatherMap API
+                </div>
+              </div>
+            </label>
           </div>
         </div>
 
@@ -310,9 +354,10 @@ export const TestPage: React.FC = () => {
 
       {/* Render ScrollHouseViewer with test props */}
       <ScrollHouseViewer
-        testMode={true}
+        testMode={!useRealTimeWeather}
         testTime={testTime}
-        testWeather={{ type: weatherType, intensity: 0.7 }}
+        testWeather={!useRealTimeWeather ? { type: weatherType, intensity: 0.7 } : undefined}
+        useRealTimeWeather={useRealTimeWeather}
         onTimeUpdate={setTestTime}
       />
     </div>
