@@ -5,7 +5,7 @@
 
 import type { WeatherType } from '../config/presetConfig';
 
-const API_KEY = '8fbd0c2aeb2a33ee8b631dd430784f74';
+const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
 const API_BASE_URL = 'https://api.openweathermap.org/data/2.5/weather';
 
 export interface OpenWeatherResponse {
@@ -46,6 +46,12 @@ export async function fetchWeatherData(
   latitude: number,
   longitude: number
 ): Promise<OpenWeatherResponse> {
+  if (!API_KEY) {
+    throw new Error(
+      'OpenWeatherMap API key is not configured. Please set VITE_OPENWEATHER_API_KEY in your .env file.'
+    );
+  }
+
   const url = `${API_BASE_URL}?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric`;
 
   try {
