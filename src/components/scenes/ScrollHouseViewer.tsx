@@ -20,6 +20,7 @@ import { getSunPosition } from '../../utilities/sunPositionCalculator';
 import { useSunPosition } from '../../hooks/useSunPosition';
 import { useScrollAnimation } from '../../hooks/useScrollAnimation';
 import { useWeatherApi } from '../../hooks/useWeatherApi';
+import { useSectionSnapScroll } from '../../hooks/useSectionSnapScroll';
 
 // Three.js modules
 import {
@@ -123,6 +124,12 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     isLoaded,
     onSectionChange: setCurrentSection,
     onProgressChange: setScrollProgress
+  });
+
+  useSectionSnapScroll({
+    enabled: isLoaded,
+    sectionCount: cameraKeyframes.length,
+    currentSection
   });
 
   // Separate effect to update scene when test props change
