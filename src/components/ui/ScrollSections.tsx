@@ -33,7 +33,8 @@ export const ScrollSections: React.FC<ScrollSectionsProps> = ({
               justifyContent: index % 2 === 0 ? 'flex-start' : 'flex-end',
               padding: '0 8%',
               zIndex: 10,
-              pointerEvents: 'none'
+              pointerEvents: 'none',
+              scrollSnapAlign: 'start'
             }}
           >
             <div style={{
