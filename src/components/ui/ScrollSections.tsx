@@ -25,6 +25,7 @@ export const ScrollSections: React.FC<ScrollSectionsProps> = ({
         return (
           <section
             key={index}
+            className="scroll-section"
             style={{
               position: 'relative',
               height: '100vh',

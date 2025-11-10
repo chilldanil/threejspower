@@ -13,3 +13,8 @@ body {
 canvas {
   display: block;
 }
+
+.scroll-section {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}

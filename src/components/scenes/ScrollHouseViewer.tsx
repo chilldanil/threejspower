@@ -19,6 +19,8 @@ import { getSunPosition } from '../../utilities/sunPositionCalculator';
 // Hooks
 import { useSunPosition } from '../../hooks/useSunPosition';
 import { useScrollAnimation } from '../../hooks/useScrollAnimation';
+import { useWeatherApi } from '../../hooks/useWeatherApi';
+import { useSectionSnapScroll } from '../../hooks/useSectionSnapScroll';
 
 // Three.js modules
 import {
@@ -33,8 +35,10 @@ import { createLights, updateLights, type SceneLights } from '../three/Lighting'
 import {
   createClouds,
   createRain,
+  createSnow,
   animateClouds,
   animateRain,
+  animateSnow,
   removeClouds
 } from '../three/Weather';
 import { loadModel } from '../three/ModelLoader';
@@ -54,7 +58,8 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
   longitude = 11.567239067279655,
   testMode: externalTestMode = false,
   testTime: externalTestTime,
-  testWeather: externalTestWeather
+  testWeather: externalTestWeather,
+  useRealTimeWeather = false
 }) => {
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
@@ -81,11 +86,30 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
   const starsObjectsRef = useRef<ReturnType<typeof createStars> | null>(null);
   const cloudsRef = useRef<THREE.Mesh[]>([]);
   const rainObjectsRef = useRef<ReturnType<typeof createRain> | null>(null);
+  const snowObjectsRef = useRef<ReturnType<typeof createSnow> | null>(null);
   const lastWeatherTypeRef = useRef<string>(externalTestWeather?.type || 'clear');
 
-  // Use external test values if provided
+  // Fetch real-time weather if enabled
+  const { weatherType: realTimeWeatherType } = useWeatherApi({
+    latitude,
+    longitude,
+    enabled: useRealTimeWeather && !externalTestMode,
+    refreshInterval: 600000 // Refresh every 10 minutes
+  });
+
+  // Use external test values if provided, otherwise use real-time or default
   const activeTime = externalTestMode && externalTestTime ? externalTestTime : currentTime;
-  const activeWeather = externalTestMode && externalTestWeather ? externalTestWeather : weather;
+
+  const activeWeather: WeatherCondition = (() => {
+    // Priority: external test weather > real-time weather > default weather
+    if (externalTestMode && externalTestWeather) {
+      return externalTestWeather;
+    }
+    if (useRealTimeWeather && realTimeWeatherType) {
+      return { type: realTimeWeatherType, intensity: 0.7 };
+    }
+    return weather;
+  })();
 
   // Custom hooks
   const { sunPosition, moonPosition, isNight, isDay } = useSunPosition(
@@ -100,6 +124,12 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     isLoaded,
     onSectionChange: setCurrentSection,
     onProgressChange: setScrollProgress
+  });
+
+  useSectionSnapScroll({
+    enabled: isLoaded,
+    sectionCount: cameraKeyframes.length,
+    currentSection
   });
 
   // Separate effect to update scene when test props change
@@ -175,6 +205,12 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
       if (rainObjectsRef.current) {
         rainObjectsRef.current.rainMaterial.opacity =
           activeWeather.type === 'rainy' ? 0.6 : 0;
+      }
+
+      // Update snow visibility
+      if (snowObjectsRef.current) {
+        snowObjectsRef.current.snowMaterial.opacity =
+          activeWeather.type === 'snowy' ? 0.8 : 0;
       }
     }
   }, [activeWeather.type]);
@@ -265,6 +301,10 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
     scene.add(rainObjects.rain);
     rainObjectsRef.current = rainObjects;
 
+    const snowObjects = createSnow(activeWeather.type === 'snowy');
+    scene.add(snowObjects.snow);
+    snowObjectsRef.current = snowObjects;
+
     // Load 3D model
     loadModel(modelPath, {
       onLoad: (model) => {
@@ -315,6 +355,17 @@ export const ScrollHouseViewer: React.FC<ScrollHouseViewerProps> = ({
           rainObjectsRef.current.rain.geometry,
           rainObjectsRef.current.rainVelocities,
           rainObjectsRef.current.rainMaterial
+        );
+      }
+
+      // Animate snow
+      if (snowObjectsRef.current) {
+        animateSnow(
+          snowObjectsRef.current.snow.geometry,
+          snowObjectsRef.current.snowVelocities,
+          snowObjectsRef.current.snowDrift,
+          snowObjectsRef.current.snowMaterial,
+          now
         );
       }
 

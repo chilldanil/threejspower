@@ -17,7 +17,8 @@ export const getSkyColors = (altitude: number, weatherCondition: WeatherConditio
   // Weather modifiers
   const weatherDarkness = weatherCondition.type === 'cloudy' ? 0.7 :
                          weatherCondition.type === 'rainy' ? 0.5 :
-                         weatherCondition.type === 'foggy' ? 0.6 : 1.0;
+                         weatherCondition.type === 'foggy' ? 0.6 :
+                         weatherCondition.type === 'snowy' ? 0.75 : 1.0;
 
   const baseColors = (() => {
     if (altitudeDeg < -18) {
@@ -83,13 +84,21 @@ export const getSkyColors = (altitude: number, weatherCondition: WeatherConditio
   })();
 
   // Apply weather modifications
+  const fogSettings = (() => {
+    if (weatherCondition.type === 'foggy') {
+      return { fogDensity: 0.02, fogNear: 10, fogFar: 60 };
+    } else if (weatherCondition.type === 'snowy') {
+      return { fogDensity: 0.01, fogNear: 30, fogFar: 100 };
+    } else {
+      return { fogDensity: 0.005, fogNear: 50, fogFar: 140 };
+    }
+  })();
+
   return {
     ...baseColors,
     ambientIntensity: baseColors.ambientIntensity * weatherDarkness,
     sunIntensity: baseColors.sunIntensity * weatherDarkness,
     exposure: baseColors.exposure * weatherDarkness,
-    fogDensity: weatherCondition.type === 'foggy' ? 0.02 : 0.005,
-    fogNear: weatherCondition.type === 'foggy' ? 10 : 50,
-    fogFar: weatherCondition.type === 'foggy' ? 60 : 140
+    ...fogSettings
   };
 };

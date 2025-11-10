@@ -7,7 +7,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<ScrollHouseViewer />} />
+        <Route path="/" element={<ScrollHouseViewer useRealTimeWeather={true} />} />
         <Route path="/test" element={<TestPage />} />
       </Routes>
     </BrowserRouter>

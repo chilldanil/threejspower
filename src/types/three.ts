@@ -11,7 +11,7 @@ export interface CameraKeyframe {
 }
 
 export interface WeatherCondition {
-  type: 'clear' | 'cloudy' | 'rainy' | 'foggy';
+  type: 'clear' | 'cloudy' | 'rainy' | 'foggy' | 'snowy';
   intensity: number;
 }
 
@@ -22,6 +22,7 @@ export interface ScrollHouseViewerProps {
   testMode?: boolean;
   testTime?: Date;
   testWeather?: WeatherCondition;
+  useRealTimeWeather?: boolean;
   onTimeUpdate?: (time: Date) => void;
 }
 

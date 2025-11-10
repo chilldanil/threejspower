@@ -8,7 +8,8 @@ export const WEATHER_CONFIG = {
     clear: 5,
     cloudy: 30,
     rainy: 40,
-    foggy: 20
+    foggy: 20,
+    snowy: 35
   },
 
   // Base opacity per weather type
@@ -16,7 +17,8 @@ export const WEATHER_CONFIG = {
     clear: 0.1,
     cloudy: 0.3,
     rainy: 0.4,
-    foggy: 0.5
+    foggy: 0.5,
+    snowy: 0.35
   },
 
   // Cloud positioning
@@ -34,6 +36,7 @@ export const WEATHER_CONFIG = {
   // Cloud colors
   CLOUD_COLOR_NORMAL: 0xffffff,
   CLOUD_COLOR_RAINY: 0x888888,
+  CLOUD_COLOR_SNOWY: 0xcccccc,
 
   // Rain configuration
   RAIN_COUNT: 1000,
@@ -44,6 +47,17 @@ export const WEATHER_CONFIG = {
   RAIN_HEIGHT: 50,
   RAIN_VELOCITY_MIN: 0.1,
   RAIN_VELOCITY_RANGE: 0.1,
+
+  // Snow configuration
+  SNOW_COUNT: 800,
+  SNOW_SIZE: 0.3,
+  SNOW_OPACITY: 0.8,
+  SNOW_COLOR: 0xffffff,
+  SNOW_SPREAD: 100,
+  SNOW_HEIGHT: 50,
+  SNOW_VELOCITY_MIN: 0.03,
+  SNOW_VELOCITY_RANGE: 0.02,
+  SNOW_DRIFT_SPEED: 0.02,  // Horizontal drift
 
   // Stars configuration
   STAR_COUNT: 2000,

@@ -21,6 +21,8 @@ body {
   min-height: 100vh;
   overflow-x: hidden; /* Prevent horizontal scroll only */
   overflow-y: auto; /* Allow vertical scrolling */
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
 }
 
 #root {
